@@ -3,7 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>بالقلم — نظام الإدارة</title>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>بالقلم — نظام الإدارة v1777901717</title>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
@@ -138,8 +141,8 @@ tr:hover td{background:var(--bg)}
 .adot{width:7px;height:7px;border-radius:50%;margin-top:4px;flex-shrink:0}
 
 /* ── MODAL ── */
-.mo{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:1000;opacity:0;pointer-events:none;transition:.2s}
-.mo.open{opacity:1;pointer-events:all}
+.mo{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex!important;align-items:center;justify-content:center;z-index:1000;opacity:0;pointer-events:none;transition:opacity .2s}
+.mo.open{opacity:1!important;pointer-events:all!important;z-index:2000!important}
 .mbox{background:var(--card);border-radius:16px;width:500px;max-width:94vw;max-height:88vh;overflow-y:auto;box-shadow:0 25px 60px rgba(0,0,0,.3);transform:scale(.95);transition:.2s}
 .mo.open .mbox{transform:scale(1)}
 .mh{padding:14px 18px;border-bottom:1px solid var(--brd);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--card);z-index:1}
@@ -267,6 +270,19 @@ tr:hover td{background:var(--bg)}
 .no-access{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;text-align:center;color:var(--mu)}
 .no-access .icon{font-size:48px;margin-bottom:12px}
 
+
+/* ── PRIVATE SCHEDULE ── */
+.prv-days{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.prv-day{padding:5px 10px;border-radius:8px;border:1.5px solid var(--brd);font-size:12px;font-weight:700;cursor:pointer;user-select:none;transition:.15s;color:var(--mu);background:var(--card)}
+.prv-day.sel{border-color:var(--accent);background:rgba(245,166,35,.15);color:var(--accent)}
+.prv-slots{display:grid;gap:7px;margin-top:8px}
+.prv-slot-row{display:flex;align-items:center;gap:8px;background:var(--bg);padding:8px 10px;border-radius:9px;border:1px solid var(--brd)}
+.prv-slot-day{font-weight:800;font-size:12px;color:var(--accent);min-width:55px}
+.prv-slot-time{flex:1;padding:5px 9px;border:1px solid var(--brd);border-radius:7px;font-family:'Cairo',sans-serif;font-size:12px;background:var(--card);color:var(--tx);outline:none}
+.prv-slot-time:focus{border-color:var(--accent)}
+.prv-slot-del{width:24px;height:24px;border-radius:6px;border:1px solid var(--err-l,rgba(239,68,68,.2));background:rgba(239,68,68,.08);color:var(--err);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.prv-badge{display:inline-flex;align-items:center;gap:3px;background:rgba(245,166,35,.12);color:var(--accent);border:1px solid rgba(245,166,35,.25);border-radius:6px;padding:2px 7px;font-size:10px;font-weight:700}
+
 </style>
 </head>
 <body>
@@ -323,6 +339,28 @@ tr:hover td{background:var(--bg)}
         <div class="fg"><label class="fl">الإضافة في القروب</label><select id="sf-grpa" class="fi"><option value="1">✓ تم</option><option value="0">✗ لم يتم</option></select></div>
       </div>
       <div class="fg"><label class="fl">ملاحظات</label><textarea id="sf-notes" class="fi" rows="2" placeholder="ملاحظات..."></textarea></div>
+
+      <!-- Private schedule section — shows only for private groups -->
+      <div id="prv-sched-section" style="display:none;margin-top:4px">
+        <div style="border-top:1px solid var(--brd);padding-top:12px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between">
+          <div style="font-weight:800;font-size:13px">📅 جدول الحصص الخاص</div>
+          <span style="font-size:11px;color:var(--mu)">حدد أيام ووقت كل حصة</span>
+        </div>
+        <!-- Day picker -->
+        <label class="fl">أيام الحضور</label>
+        <div class="prv-days" id="prv-days-picker">
+          <div class="prv-day" data-day="0" onclick="togglePrvDay(this)">الأحد</div>
+          <div class="prv-day" data-day="1" onclick="togglePrvDay(this)">الاثنين</div>
+          <div class="prv-day" data-day="2" onclick="togglePrvDay(this)">الثلاثاء</div>
+          <div class="prv-day" data-day="3" onclick="togglePrvDay(this)">الأربعاء</div>
+          <div class="prv-day" data-day="4" onclick="togglePrvDay(this)">الخميس</div>
+          <div class="prv-day" data-day="5" onclick="togglePrvDay(this)">الجمعة</div>
+          <div class="prv-day" data-day="6" onclick="togglePrvDay(this)">السبت</div>
+        </div>
+        <!-- Time slots per day -->
+        <div id="prv-slots-wrap" style="margin-top:10px"></div>
+      </div>
+
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
         <button class="btn btn-gh btn-sm" onclick="closeMo('mo-stu')">إلغاء</button>
         <button class="btn btn-ac btn-sm" onclick="saveStu()">✓ حفظ</button>
@@ -557,7 +595,7 @@ CREATE POLICY "allow_all" ON bealqalam_data
 <aside class="sb" id="sb">
   <div class="sb-logo">
     <img src="data:image/png;base64,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" alt="بالقلم">
-    <div><div class="sb-logo-tx">بالقلم</div><div class="sb-logo-sub">نظام الإدارة الأكاديمية</div></div>
+    <div><div class="sb-logo-tx">بالقلم</div><div class="sb-logo-sub">نظام الإدارة الأكاديمية</div><div style="font-size:9px;color:rgba(255,255,255,.2);margin-top:2px">v1777901717</div></div>
   </div>
   <nav class="sb-nav">
     <div class="sb-sec">الرئيسية</div>
@@ -1181,17 +1219,64 @@ function seed(){
 // ═══════════════════════════
 // AUTH
 // ═══════════════════════════
+// ═══════════════════════════════════════════
+// AUTH + USERS SYSTEM
+// ═══════════════════════════════════════════
+let currentUser = null;
+
+const DEFAULT_USERS = [
+  {id:'u1', name:'مدير النظام',      pass:'Admin123', role:'admin', grp:null},
+  {id:'u2', name:'موظفة التسجيل',    pass:'Staff123', role:'staff', grp:null},
+];
+
+function getUsers(){ return get('users', DEFAULT_USERS); }
+
+function canAccess(section){
+  if(!currentUser) return false;
+  if(currentUser.role==='admin') return true;
+  if(currentUser.role==='staff') return ['students','groups','alerts','teachers'].includes(section);
+  if(currentUser.role==='teacher') return ['students','groups'].includes(section);
+  return false;
+}
+
+function applyRoleUI(){
+  if(!currentUser) return;
+  const role = currentUser.role;
+  const av = document.getElementById('sb-av-tx');
+  const nm = document.getElementById('sb-uname-tx');
+  const rl = document.getElementById('sb-urole-tx');
+  if(av) av.textContent = currentUser.name.charAt(0);
+  if(nm) nm.textContent = currentUser.name;
+  if(rl) rl.textContent = role==='admin'?'مدير النظام':role==='staff'?'موظفة تسجيل':'معلم/ة';
+  // Hide finance/users from non-admins
+  const finNav = document.querySelector('[data-page="finance"]');
+  const usersNav = document.querySelector('[data-page="users"]');
+  if(role!=='admin'){
+    if(finNav) finNav.style.display='none';
+    if(usersNav) usersNav.style.display='none';
+  }
+}
+
 function doLogin(){
-  const e=document.getElementById('li-e').value;
-  const p=document.getElementById('li-p').value;
-  if(!e||!p){toast('أدخل البريد وكلمة المرور','err');return;}
+  const nameInput = document.getElementById('li-e').value.trim();
+  const passInput = document.getElementById('li-p').value;
+  if(!nameInput||!passInput){toast('أدخل الاسم وكلمة المرور','err');return;}
+  const users = getUsers();
+  // Match by name+pass OR pass only (fallback)
+  const user = users.find(u=>u.name===nameInput&&u.pass===passInput)
+             || users.find(u=>u.pass===passInput);
+  if(!user){toast('اسم المستخدم أو كلمة المرور غير صحيحة','err');return;}
+  currentUser = user;
   document.getElementById('login-scr').style.display='none';
   document.getElementById('app').style.display='flex';
+  applyRoleUI();
   initApp();
 }
 function doLogout(){
+  currentUser = null;
   document.getElementById('app').style.display='none';
   document.getElementById('login-scr').style.display='flex';
+  document.getElementById('li-p').value='';
 }
 document.addEventListener('keydown',e=>{if(e.key==='Enter'&&document.getElementById('login-scr').style.display!=='none')doLogin();});
 
@@ -1278,9 +1363,7 @@ function setTheme(dark,btn){
 function toggleNp(){document.getElementById('np').classList.toggle('open');}
 document.addEventListener('click',e=>{if(!e.target.closest('.ibtn')&&!e.target.closest('.np'))document.getElementById('np').classList.remove('open');});
 function closeMo(id){document.getElementById(id).classList.remove('open');}
-document.querySelectorAll&&document.querySelectorAll('.mo').forEach&&setTimeout(()=>{
-  document.querySelectorAll('.mo').forEach(el=>el.addEventListener('click',function(e){if(e.target===this)this.classList.remove('open');}));
-},100);
+// modal click-outside handled below
 
 function renderNp(){
   const alrts=buildAlerts();
@@ -1337,7 +1420,7 @@ function renderDashboard(){
       <td style="font-size:11px;color:var(--mu)">${s.start||'—'}</td>
       <td style="font-size:11px;color:var(--mu)">${s.end||'—'}</td>
       <td>${p?'<span class="bdg b-ok">✓ دفع</span>':'<span class="bdg b-err">✗ لم يدفع</span>'}</td>
-      <td><button class="btn btn-xs" style="background:rgba(16,185,129,.12);color:#10b981;border:1px solid rgba(16,185,129,.25)" onclick="openRcpt('${s.id}')">🧾</button></td>
+      <td><button class="btn btn-xs" style="background:rgba(16,185,129,.12);color:#10b981;border:1px solid rgba(16,185,129,.25)" onclick=\"event.stopPropagation();openRcpt('${s.id}')\">🧾</button></td>
     </tr>`;
   }).join('');
 
@@ -1398,11 +1481,17 @@ function renderStudents(){
       <td style="text-align:center"><input type="checkbox" class="chk" ${p?'checked':''} onchange="setPay('${s.id}',${curY},${curM},this.checked)"></td>
       <td style="text-align:center"><input type="checkbox" class="chk" ${s.sched?'checked':''} onchange="toggleField('${s.id}','sched',this.checked)"></td>
       <td style="text-align:center"><input type="checkbox" class="chk" ${s.grp_add?'checked':''} onchange="toggleField('${s.id}','grp_add',this.checked)"></td>
-      <td style="font-size:11px;color:var(--mu);max-width:110px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis" title="${s.notes||''}">${s.notes||'—'}</td>
+      <td style="font-size:11px;color:var(--mu);max-width:130px">
+        ${s.prvSched && Object.keys(s.prvSched).length ? 
+          `<div style="margin-bottom:3px">${Object.keys(s.prvSched).sort().map(d=>
+            '<span class=\"prv-badge\">'+DAY_NAMES[d]+(s.prvSched[d]?' '+s.prvSched[d]:'')+' </span>'
+          ).join(' ')}</div>` : ''}
+        <span style="overflow:hidden;white-space:nowrap;text-overflow:ellipsis;display:block" title="${s.notes||''}">${s.notes||'—'}</span>
+      </td>
       <td style="white-space:nowrap">
         <div style="display:flex;gap:3px;align-items:center;padding:4px 8px">
           <button class="btn btn-gh btn-xs" onclick="openStuMo('${s.id}')" title="تعديل البيانات">✏</button>
-          <button class="btn btn-xs" style="background:rgba(16,185,129,.12);color:#10b981;border:1px solid rgba(16,185,129,.25)" onclick="openRcpt('${s.id}')" title="إيصال دفع">🧾</button>
+          <button class="btn btn-xs" style="background:rgba(16,185,129,.12);color:#10b981;border:1px solid rgba(16,185,129,.25)" onclick=\"event.stopPropagation();openRcpt('${s.id}')\" title="إيصال دفع">🧾</button>
           <button class="btn btn-xs" style="background:rgba(59,130,246,.12);color:#3b82f6;border:1px solid rgba(59,130,246,.25)" onclick="openMultiPay('${s.id}')" title="دفعات متعددة الأشهر">📅</button>
           <button class="btn btn-xs" style="background:rgba(139,92,246,.12);color:#8b5cf6;border:1px solid rgba(139,92,246,.25)" onclick="openMoveStu('${s.id}')" title="نقل لمجموعة أخرى">↗</button>
           <button class="btn btn-xs" style="background:rgba(239,68,68,.1);color:#ef4444;border:1px solid rgba(239,68,68,.25)" onclick="archiveStu('${s.id}','${s.name.replace(/'/g,"\'")}',this)" title="حذف / أرشفة">🗑</button>
@@ -1444,17 +1533,24 @@ function openStuMo(id){
     document.getElementById('sf-grpa').value='0';
   }
   document.getElementById('mo-stu').classList.add('open');
+  _initPrvSchedForModal(id);
 }
 
 function saveStu(){
   const name=document.getElementById('sf-name').value.trim();
   if(!name){toast('اسم الطالب مطلوب','err');return;}
   const stus=get('students',[]);
+  // collect prv schedule
+  const _pdays = Object.keys(_prvDays).map(Number).sort();
+  _pdays.forEach(d => { const inp = document.getElementById('prv-slot-'+d); if(inp) _prvDays[d]=inp.value; });
+  const prvSchedData = Object.keys(_prvDays).length ? {..._prvDays} : null;
+
   const obj={name,phone:document.getElementById('sf-phone').value,cls:document.getElementById('sf-cls').value,
     group:document.getElementById('sf-grp').value,fee:Number(document.getElementById('sf-fee').value)||0,
     start:document.getElementById('sf-start').value,end:document.getElementById('sf-end').value,
     sched:document.getElementById('sf-sched').value==='1',grp_add:document.getElementById('sf-grpa').value==='1',
-    notes:document.getElementById('sf-notes').value};
+    notes:document.getElementById('sf-notes').value,
+    prvSched: prvSchedData};
   if(editStuId){
     const i=stus.findIndex(s=>s.id===editStuId);
     if(i>=0) stus[i]={...stus[i],...obj};
@@ -1636,7 +1732,7 @@ function renderFinance(){
       <td style="font-size:11px;color:var(--mu)">${s.end||'—'}</td>
       <td style="display:flex;gap:5px;align-items:center;padding:8px 12px">
         <input type="checkbox" class="chk" onchange="setPay('${s.id}',${curY},${curM},this.checked);renderFinance()">
-        <button class="btn btn-xs" style="background:rgba(16,185,129,.12);color:#10b981;border:1px solid rgba(16,185,129,.25)" onclick="openRcpt('${s.id}')" title="إيصال">🧾</button>
+        <button class="btn btn-xs" style="background:rgba(16,185,129,.12);color:#10b981;border:1px solid rgba(16,185,129,.25)" onclick=\"event.stopPropagation();openRcpt('${s.id}')\" title="إيصال">🧾</button>
       </td>
       <td style="font-size:11px;color:var(--mu)">${s.notes||'—'}</td>
     </tr>`;
@@ -1774,22 +1870,35 @@ function openRcpt(stuId){
   const s=stus.find(x=>x.id===stuId);
   if(!s){toast('الطالب غير موجود','err');return;}
   const g=grps.find(x=>x.id===s.group);
-  const paid=getPay(s.id,curY,curM);
-  const mth=monthLabel(curY,curM);
   const now=new Date();
   const dateStr=now.toLocaleDateString('ar-BH',{year:'numeric',month:'long',day:'numeric'});
   const rcptNo='RCP-'+String(Date.now()).slice(-6);
 
+  // حساب كل الأشهر المدفوعة ومبالغها
+  const pays=get('pays',{}), amounts=get('payAmounts',{});
+  const stuPays=pays[stuId]||{}, stuAmounts=amounts[stuId]||{};
+  const paidMonths=[];
+  Object.entries(stuPays).forEach(([mk,isPaid])=>{
+    if(isPaid){
+      const[yr,mo]=mk.split('-').map(Number);
+      const amt=stuAmounts[mk]!==undefined?stuAmounts[mk]:Number(s.fee||0);
+      paidMonths.push({mk,yr,mo:mo-1,amt,label:MONTH_NAMES[mo-1]+' '+yr});
+    }
+  });
+  paidMonths.sort((a,b)=>a.mk.localeCompare(b.mk));
+  const totalPaid=paidMonths.reduce((sum,m)=>sum+m.amt,0);
+  const hasPaid=paidMonths.length>0;
+
   document.getElementById('rcpt-title').textContent='إيصال دفع — '+s.name;
-  document.getElementById('rcpt-content').innerHTML=rcptHTML(s,g,mth,dateStr,rcptNo,paid);
+  document.getElementById('rcpt-content').innerHTML=rcptHTML(s,g,dateStr,rcptNo,paidMonths,totalPaid,hasPaid);
   document.getElementById('mo-rcpt').classList.add('open');
 }
 
-function rcptHTML(s,g,mth,dateStr,rcptNo,paid){
+function rcptHTML(s,g,dateStr,rcptNo,paidMonths,totalPaid,hasPaid){
   const logoSrc="data:image/png;base64,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";
-  const statusColor=paid?'#059669':'#dc2626';
-  const statusBg=paid?'#d1fae5':'#fee2e2';
-  const statusTx=paid?'✓ تم استلام المبلغ':'✗ لم يتم الدفع';
+  const statusColor=hasPaid?'#059669':'#dc2626';
+  const statusBg=hasPaid?'#d1fae5':'#fee2e2';
+  const statusTx=hasPaid?'✓ تم استلام المبلغ':'✗ لم يتم الدفع';
   return `<div style="font-family:Cairo,Arial,sans-serif;direction:rtl;background:#fff;max-width:480px;margin:0 auto;border-radius:0">
 
     <!-- HEADER -->
@@ -1798,6 +1907,7 @@ function rcptHTML(s,g,mth,dateStr,rcptNo,paid){
         <div style="font-size:20px;font-weight:900;color:#fff;margin-bottom:2px">بالقلم</div>
         <div style="font-size:11px;color:rgba(255,255,255,.45)">أكاديمية تعليمية</div>
         <div style="margin-top:10px;display:inline-block;background:${statusBg};color:${statusColor};padding:4px 12px;border-radius:20px;font-size:12px;font-weight:800">${statusTx}</div>
+        ${paidMonths.length>1?`<div style="margin-top:5px;font-size:11px;color:rgba(255,255,255,.5)">${paidMonths.length} أشهر مدفوعة</div>`:''}
       </div>
       <div style="text-align:center">
         <img src="${logoSrc}" style="width:60px;height:60px;object-fit:contain;filter:brightness(0) invert(1);display:block;margin:0 auto 6px">
@@ -1821,8 +1931,12 @@ function rcptHTML(s,g,mth,dateStr,rcptNo,paid){
     <div style="padding:16px 26px">
       <table style="width:100%;border-collapse:collapse">
         <tr style="border-bottom:1px solid #f1f5f9">
-          <td style="padding:10px 0;font-size:12px;color:#94a3b8;width:50%">الشهر</td>
-          <td style="padding:10px 0;font-size:13px;font-weight:700;color:#1e293b;text-align:left">${mth}</td>
+          <td style="padding:10px 0;font-size:12px;color:#94a3b8;width:50%;vertical-align:top">الأشهر المدفوعة</td>
+          <td style="padding:10px 0;font-size:12px;font-weight:700;color:#1e293b;text-align:left;line-height:2">
+            ${paidMonths.length
+              ? paidMonths.map(m=>`<span style="display:inline-block;background:#f0fdf4;color:#059669;border:1px solid #bbf7d0;border-radius:5px;padding:1px 8px;margin:2px;font-size:11px">${m.label} — ${m.amt} د</span>`).join('')
+              : '<span style="color:#ef4444">لا توجد دفعات مسجلة</span>'}
+          </td>
         </tr>
         <tr style="border-bottom:1px solid #f1f5f9">
           <td style="padding:10px 0;font-size:12px;color:#94a3b8">تاريخ الإصدار</td>
@@ -1837,18 +1951,30 @@ function rcptHTML(s,g,mth,dateStr,rcptNo,paid){
           <td style="padding:10px 0;font-size:13px;font-weight:700;color:#1e293b;text-align:left">${s.end||'—'}</td>
         </tr>
         ${g&&g.teacher?`<tr style="border-bottom:1px solid #f1f5f9"><td style="padding:10px 0;font-size:12px;color:#94a3b8">المعلم/ة</td><td style="padding:10px 0;font-size:13px;font-weight:700;color:#1e293b;text-align:left">${g.teacher}</td></tr>`:''}
-        ${s.notes?`<tr style="border-bottom:1px solid #f1f5f9"><td style="padding:10px 0;font-size:12px;color:#94a3b8">ملاحظات</td><td style="padding:10px 0;font-size:13px;font-weight:600;color:#1e293b;text-align:left">${s.notes}</td></tr>`:''}
+        ${s.prvSched && Object.keys(s.prvSched).length ? `<tr style="border-bottom:1px solid #f1f5f9">
+        <td style="padding:10px 0;font-size:12px;color:#94a3b8;vertical-align:top">جدول الحصص</td>
+        <td style="padding:10px 0;font-size:12px;font-weight:700;color:#1e293b;text-align:left;line-height:1.8">
+          ${Object.keys(s.prvSched).map(Number).sort().map(d=>`<span style="display:inline-block;background:#fff7ed;color:#f5a623;border:1px solid rgba(245,166,35,.3);border-radius:5px;padding:1px 7px;margin:2px;font-size:11px">${['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'][d]} ${s.prvSched[d]||''}</span>`).join('')}
+        </td></tr>` : ''}
+      ${s.notes?`<tr style="border-bottom:1px solid #f1f5f9"><td style="padding:10px 0;font-size:12px;color:#94a3b8">ملاحظات</td><td style="padding:10px 0;font-size:13px;font-weight:600;color:#1e293b;text-align:left">${s.notes}</td></tr>`:''}
       </table>
 
       <!-- AMOUNT BOX -->
-      <div style="margin-top:16px;background:linear-gradient(135deg,#0f172a,#1e3a5f);border-radius:12px;padding:18px 22px;display:flex;align-items:center;justify-content:space-between">
-        <div>
-          <div style="font-size:11px;color:rgba(255,255,255,.5);margin-bottom:4px">المبلغ المستحق</div>
-          <div style="font-size:32px;font-weight:900;color:#f5a623;line-height:1">${s.fee||0}<span style="font-size:16px;margin-right:4px">د</span></div>
-        </div>
-        <div style="text-align:center">
-          <div style="width:56px;height:56px;border-radius:50%;background:${statusBg};display:flex;align-items:center;justify-content:center;font-size:24px">${paid?'✅':'⏳'}</div>
-          <div style="color:${statusColor};font-size:11px;font-weight:700;margin-top:5px">${paid?'مدفوع':'معلق'}</div>
+      <div style="margin-top:16px;background:linear-gradient(135deg,#0f172a,#1e3a5f);border-radius:12px;padding:18px 22px">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <div style="font-size:11px;color:rgba(255,255,255,.4);margin-bottom:4px">
+              ${paidMonths.length>1?'إجمالي المبلغ المدفوع ('+paidMonths.length+' أشهر)':'المبلغ المدفوع'}
+            </div>
+            <div style="font-size:36px;font-weight:900;color:#f5a623;line-height:1">
+              ${totalPaid}<span style="font-size:16px;margin-right:5px">د</span>
+            </div>
+            ${paidMonths.length>1?`<div style="font-size:11px;color:rgba(255,255,255,.35);margin-top:4px">${paidMonths.map(m=>m.amt+' د').join(' + ')} = ${totalPaid} د</div>`:''}
+          </div>
+          <div style="text-align:center">
+            <div style="width:56px;height:56px;border-radius:50%;background:${statusBg};display:flex;align-items:center;justify-content:center;font-size:24px">${hasPaid?'✅':'⏳'}</div>
+            <div style="color:${statusColor};font-size:11px;font-weight:700;margin-top:5px">${hasPaid?'مدفوع':'معلق'}</div>
+          </div>
         </div>
       </div>
     </div>
@@ -1897,11 +2023,17 @@ function printAllRcpts(){
   if(!withFees.length){toast('لا يوجد طلاب برسوم','warn');return;}
   
   const printArea=document.getElementById('pdf-print-area');
+  const _bpays=get('pays',{}),_bamts=get('payAmounts',{});
   const allHtml=withFees.map((s,i)=>{
     const g=gmap[s.group];
-    const paid=getPay(s.id,curY,curM);
     const rcptNo='RCP-'+String(Date.now()+i).slice(-6);
-    return `<div style="page-break-after:always;padding:20px">${rcptHTML(s,g,mth,dateStr,rcptNo,paid)}</div>`;
+    const sp=_bpays[s.id]||{}, sa=_bamts[s.id]||{};
+    const pm=Object.entries(sp)
+      .filter(([,ip])=>ip)
+      .map(([mk])=>{const[yr,mo]=mk.split('-').map(Number);return{mk,yr,mo:mo-1,amt:sa[mk]!==undefined?sa[mk]:Number(s.fee||0),label:MONTH_NAMES[mo-1]+' '+yr};})
+      .sort((a,b)=>a.mk.localeCompare(b.mk));
+    const tot=pm.reduce((t,m)=>t+m.amt,0);
+    return `<div style="page-break-after:always;padding:20px">${rcptHTML(s,g,dateStr,rcptNo,pm,tot,pm.length>0)}</div>`;
   }).join('');
   
   printArea.innerHTML=`
@@ -1918,80 +2050,7 @@ function printAllRcpts(){
 }
 
 
-// ═══════════════════════════════════════════
-// MULTI-USER AUTH SYSTEM
-// ═══════════════════════════════════════════
-let currentUser = null;
 
-const DEFAULT_USERS = [
-  {id:'u1', name:'مدير النظام', pass:'Admin123', role:'admin', grp:null},
-  {id:'u2', name:'موظفة التسجيل', pass:'Staff123', role:'staff', grp:null},
-];
-
-function getUsers(){ return get('users', DEFAULT_USERS); }
-
-function doLogin(){
-  const p = document.getElementById('li-p').value;
-  const users = getUsers();
-  // Try to match by password (simple demo auth)
-  const nameInput = document.getElementById('li-e').value.trim();
-  const user = users.find(u => u.pass === p && (u.name === nameInput || u.id === nameInput || nameInput === u.role));
-  if(!user){
-    // fallback: check if it matches any user by name+pass
-    const u2 = users.find(u => u.pass === p);
-    if(!u2){toast('بيانات الدخول غير صحيحة','err');return;}
-    currentUser = u2;
-  } else {
-    currentUser = user;
-  }
-  document.getElementById('login-scr').style.display='none';
-  document.getElementById('app').style.display='flex';
-  applyRoleUI();
-  initApp();
-}
-
-function applyRoleUI(){
-  if(!currentUser) return;
-  const role = currentUser.role;
-  // Update sidebar user info
-  const av = document.getElementById('sb-av-tx');
-  const nm = document.getElementById('sb-uname-tx');
-  const rl = document.getElementById('sb-urole-tx');
-  if(av) av.textContent = currentUser.name.charAt(0);
-  if(nm) nm.textContent = currentUser.name;
-  if(rl) rl.textContent = role==='admin'?'مدير النظام':role==='staff'?'موظفة تسجيل':'معلم/ة';
-
-  // Show/hide nav items based on role
-  const finNav = document.querySelector('[data-page="finance"]');
-  const tchrNav = document.querySelector('[data-page="teachers"]');
-  const usersNav = document.querySelector('[data-page="users"]');
-  
-  if(role === 'teacher'){
-    if(finNav) finNav.style.display='none';
-    if(usersNav) usersNav.style.display='none';
-    // Teacher only sees their group
-  } else if(role === 'staff'){
-    if(finNav) finNav.style.display='none'; // staff sees limited finance
-    if(usersNav) usersNav.style.display='none';
-  }
-  // Admin sees everything
-}
-
-function doLogout(){
-  currentUser = null;
-  document.getElementById('app').style.display='none';
-  document.getElementById('login-scr').style.display='flex';
-  document.getElementById('li-p').value='';
-}
-
-function canAccess(section){
-  if(!currentUser) return false;
-  const role = currentUser.role;
-  if(role==='admin') return true;
-  if(role==='staff') return ['students','groups','alerts','teachers'].includes(section);
-  if(role==='teacher') return ['students','groups','schedule'].includes(section);
-  return false;
-}
 
 // ── Add User ──
 function addUser(){
@@ -2480,6 +2539,110 @@ function confirmMoveStu(id, name){
 // ─── Filter archived students from main list by default ───
 // Patch renderStudents to hide archived unless toggle is on
 let showArchived = false;
+
+
+// ═══════════════════════════════════════════
+// PRIVATE STUDENT SCHEDULE
+// ═══════════════════════════════════════════
+const DAY_NAMES = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+let _prvDays = {}; // {dayIndex: timeString}
+
+function _isPrvGroup(grpId){
+  const grps = get('groups', []);
+  const g = grps.find(x => x.id === grpId);
+  return g && g.type === 'private';
+}
+
+function _checkPrvSection(){
+  const grpId = document.getElementById('sf-grp').value;
+  const sec = document.getElementById('prv-sched-section');
+  if(!sec) return;
+  if(_isPrvGroup(grpId)){
+    sec.style.display = 'block';
+  } else {
+    sec.style.display = 'none';
+  }
+}
+
+function togglePrvDay(el){
+  const day = parseInt(el.dataset.day);
+  if(el.classList.contains('sel')){
+    el.classList.remove('sel');
+    delete _prvDays[day];
+  } else {
+    el.classList.add('sel');
+    _prvDays[day] = _prvDays[day] || '';
+  }
+  _renderPrvSlots();
+}
+
+function _renderPrvSlots(){
+  const wrap = document.getElementById('prv-slots-wrap');
+  if(!wrap) return;
+  const days = Object.keys(_prvDays).map(Number).sort();
+  if(!days.length){
+    wrap.innerHTML = '<div style="font-size:11px;color:var(--mu);text-align:center;padding:8px">اختر الأيام أولاً</div>';
+    return;
+  }
+  wrap.innerHTML = '<label class="fl" style="margin-bottom:6px">وقت كل حصة</label>' +
+    days.map(d => `
+    <div class="prv-slot-row">
+      <div class="prv-slot-day">${DAY_NAMES[d]}</div>
+      <input class="prv-slot-time" type="text" 
+        placeholder="مثال: 4:00 - 5:00م"
+        value="${_prvDays[d] || ''}"
+        oninput="_prvDays[${d}]=this.value"
+        id="prv-slot-${d}">
+      <div class="prv-slot-del" onclick="removePrvDay(${d})">✕</div>
+    </div>`).join('');
+}
+
+function removePrvDay(day){
+  delete _prvDays[day];
+  // uncheck the day button
+  const btn = document.querySelector(`.prv-day[data-day="${day}"]`);
+  if(btn) btn.classList.remove('sel');
+  _renderPrvSlots();
+}
+
+function _loadPrvSched(stuId){
+  _prvDays = {};
+  if(!stuId) return;
+  const stus = get('students', []);
+  const s = stus.find(x => x.id === stuId);
+  if(s && s.prvSched){
+    _prvDays = {...s.prvSched};
+  }
+  // render days
+  document.querySelectorAll('.prv-day').forEach(el => {
+    const d = parseInt(el.dataset.day);
+    if(_prvDays[d] !== undefined){
+      el.classList.add('sel');
+    } else {
+      el.classList.remove('sel');
+    }
+  });
+  _renderPrvSlots();
+}
+
+function _getPrvSchedSummary(prvSched){
+  if(!prvSched || !Object.keys(prvSched).length) return '';
+  const days = Object.keys(prvSched).map(Number).sort();
+  return days.map(d => {
+    const time = prvSched[d];
+    return `${DAY_NAMES[d]}${time ? ' ' + time : ''}`;
+  }).join(' | ');
+}
+
+// ─── Private schedule loads when modal opens (called from openStuMo) ───
+function _initPrvSchedForModal(id){
+  setTimeout(() => {
+    _loadPrvSched(id || null);
+    _checkPrvSection();
+    const grpSel = document.getElementById('sf-grp');
+    if(grpSel) grpSel.onchange = _checkPrvSection;
+  }, 60);
+}
 
 </script>
 </body>
