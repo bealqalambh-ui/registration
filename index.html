@@ -431,6 +431,11 @@ tr:hover td{background:var(--bg)}
         <div class="fg"><label class="fl">إرسال الجدول</label><select id="sf-sched" class="fi"><option value="1">✓ تم</option><option value="0">✗ لم يتم</option></select></div>
         <div class="fg"><label class="fl">الإضافة في القروب</label><select id="sf-grpa" class="fi"><option value="1">✓ تم</option><option value="0">✗ لم يتم</option></select></div>
       </div>
+      <!-- Teacher field — shows for private groups -->
+      <div class="fg" id="sf-teacher-wrap">
+        <label class="fl">المعلم/ة المسؤول/ة</label>
+        <input id="sf-teacher" class="fi" placeholder="اسم المعلم/ة">
+      </div>
       <div class="fg"><label class="fl">ملاحظات</label><textarea id="sf-notes" class="fi" rows="2" placeholder="ملاحظات..."></textarea></div>
 
       <!-- Private schedule section — shows only for private groups -->
@@ -817,6 +822,9 @@ CREATE POLICY "allow_all" ON bealqalam_data
     <!-- DASHBOARD -->
     <div class="page active" id="page-dashboard">
       <div class="sg" id="dash-sg"></div>
+      <!-- Expiry alerts -->
+      <div id="dash-expiry-alerts" style="margin-bottom:14px;display:none"></div>
+
       <div class="g2">
         <div class="card">
           <div class="ch"><div><div class="ct">📊 إيرادات الشهر الحالي حسب المجموعة</div><div class="csub" id="dash-month-lbl"></div></div></div>
@@ -1636,6 +1644,45 @@ function renderDashboard(){
     SC('#ef4444','⏰',unpaid.length,'لم يدفعوا بعد',`من أصل ${stus.length} طالب`)+
     SC('#f5a623','💰',rev+' د','الإيراد الفعلي',monthLabel(curY,curM));
 
+  // ── Expiry alerts on dashboard ──
+  const today2 = new Date();
+  const expired2   = stus.filter(s=>s.end && Math.ceil((new Date(s.end)-today2)/864e5) < 0 && Math.ceil((new Date(s.end)-today2)/864e5) >= -5);
+  const expiring3  = stus.filter(s=>s.end && Math.ceil((new Date(s.end)-today2)/864e5) >= 0 && Math.ceil((new Date(s.end)-today2)/864e5) <= 3);
+  const expiring7  = stus.filter(s=>s.end && Math.ceil((new Date(s.end)-today2)/864e5) > 3  && Math.ceil((new Date(s.end)-today2)/864e5) <= 7);
+  const dashAlerts = document.getElementById('dash-expiry-alerts');
+  if(dashAlerts){
+    let html = '';
+    if(expired2.length) html += `
+      <div style="display:flex;align-items:flex-start;gap:10px;padding:11px 14px;background:var(--err-l);border:1px solid rgba(239,68,68,.3);border-radius:10px;margin-bottom:8px">
+        <span style="font-size:18px;flex-shrink:0">⛔</span>
+        <div style="flex:1">
+          <div style="font-weight:800;font-size:13px;color:var(--err)">انتهى اشتراك ${expired2.length} طالب</div>
+          <div style="font-size:12px;color:var(--err);opacity:.85;margin-top:2px">${expired2.map(s=>s.name).join(' — ')}</div>
+        </div>
+        <button class="btn btn-xs" style="background:var(--err);color:#fff;border:none;flex-shrink:0" onclick="goPage('attendance');setTimeout(()=>switchAttMain('reports',document.getElementById('atab-reports')),300)">عرض</button>
+      </div>`;
+    if(expiring3.length) html += `
+      <div style="display:flex;align-items:flex-start;gap:10px;padding:11px 14px;background:var(--err-l);border:1px solid rgba(239,68,68,.25);border-radius:10px;margin-bottom:8px">
+        <span style="font-size:18px;flex-shrink:0">🔴</span>
+        <div style="flex:1">
+          <div style="font-weight:800;font-size:13px;color:var(--err)">${expiring3.length} طلاب ينتهي اشتراكهم خلال 3 أيام</div>
+          <div style="font-size:12px;color:var(--err);opacity:.85;margin-top:2px">${expiring3.map(s=>`${s.name} (${Math.ceil((new Date(s.end)-today2)/864e5)}د)`).join(' — ')}</div>
+        </div>
+        <button class="btn btn-xs" style="background:var(--err);color:#fff;border:none;flex-shrink:0" onclick="goPage('students')">عرض</button>
+      </div>`;
+    if(expiring7.length) html += `
+      <div style="display:flex;align-items:flex-start;gap:10px;padding:11px 14px;background:var(--warn-l);border:1px solid rgba(245,158,11,.3);border-radius:10px;margin-bottom:8px">
+        <span style="font-size:18px;flex-shrink:0">⚠️</span>
+        <div style="flex:1">
+          <div style="font-weight:800;font-size:13px;color:var(--warn)">${expiring7.length} طلاب ينتهي اشتراكهم خلال 7 أيام</div>
+          <div style="font-size:12px;color:var(--warn);opacity:.85;margin-top:2px">${expiring7.map(s=>`${s.name} (${Math.ceil((new Date(s.end)-today2)/864e5)}د)`).join(' — ')}</div>
+        </div>
+        <button class="btn btn-xs" style="background:var(--warn);color:#fff;border:none;flex-shrink:0" onclick="goPage('students')">عرض</button>
+      </div>`;
+    dashAlerts.innerHTML = html;
+    dashAlerts.style.display = html ? 'block' : 'none';
+  }
+
   // Charts
   const grpRev=grps.map(g=>{
     const gs=stus.filter(s=>s.group===g.id&&getPay(s.id,curY,curM));
@@ -1775,6 +1822,7 @@ function openStuMo(id){
     document.getElementById('sf-sched').value=s.sched?'1':'0';
     document.getElementById('sf-grpa').value=s.grp_add?'1':'0';
     document.getElementById('sf-notes').value=s.notes||'';
+    if(document.getElementById('sf-teacher')) document.getElementById('sf-teacher').value=s.teacher||'';
   } else {
     ['sf-name','sf-phone','sf-cls','sf-fee','sf-notes','sf-start','sf-end'].forEach(x=>document.getElementById(x).value='');
     document.getElementById('sf-sched').value='0';
@@ -1798,6 +1846,7 @@ function saveStu(){
     start:document.getElementById('sf-start').value,end:document.getElementById('sf-end').value,
     sched:document.getElementById('sf-sched').value==='1',grp_add:document.getElementById('sf-grpa').value==='1',
     notes:document.getElementById('sf-notes').value,
+    teacher:document.getElementById('sf-teacher')?.value||'',
     prvSched: prvSchedData};
   if(editStuId){
     const i=stus.findIndex(s=>s.id===editStuId);
@@ -2805,12 +2854,10 @@ function _isPrvGroup(grpId){
 function _checkPrvSection(){
   const grpId = document.getElementById('sf-grp').value;
   const sec = document.getElementById('prv-sched-section');
-  if(!sec) return;
-  if(_isPrvGroup(grpId)){
-    sec.style.display = 'block';
-  } else {
-    sec.style.display = 'none';
-  }
+  if(sec) sec.style.display = _isPrvGroup(grpId) ? 'block' : 'none';
+  // Show teacher field for private students
+  const tchrWrap = document.getElementById('sf-teacher-wrap');
+  if(tchrWrap) tchrWrap.style.display = _isPrvGroup(grpId) ? 'block' : 'none';
 }
 
 function togglePrvDay(el){
@@ -3322,6 +3369,7 @@ function renderAttPrivate(filter=''){
       <div class="att-prv-info">
         <div class="att-prv-name">
           ${s.name}
+          ${s.teacher?`<span style="font-size:10px;color:var(--pur);margin-right:6px">👨‍🏫${s.teacher}</span>`:''}
           ${todaySlot?`<span style="font-size:10px;color:var(--mu);margin-right:6px">⏰${todaySlot}</span>`:''}
           ${isExp?'<span style="font-size:10px;color:var(--err)"> ⛔ انتهت الحصص</span>':''}
           ${isWarn?`<span style="font-size:10px;color:var(--warn)"> ⚠ ${remain} حصة متبقية</span>`:''}
