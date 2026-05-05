@@ -283,6 +283,99 @@ tr:hover td{background:var(--bg)}
 .prv-slot-del{width:24px;height:24px;border-radius:6px;border:1px solid var(--err-l,rgba(239,68,68,.2));background:rgba(239,68,68,.08);color:var(--err);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
 .prv-badge{display:inline-flex;align-items:center;gap:3px;background:rgba(245,166,35,.12);color:var(--accent);border:1px solid rgba(245,166,35,.25);border-radius:6px;padding:2px 7px;font-size:10px;font-weight:700}
 
+
+/* ══ ATTENDANCE ══ */
+.att-grid{display:grid;gap:8px}
+.att-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;border:1.5px solid var(--brd);background:var(--card);transition:.15s}
+.att-row.present{border-color:var(--ok);background:var(--ok-l)}
+.att-row.absent{border-color:var(--err);background:var(--err-l)}
+.att-row.late{border-color:var(--warn);background:var(--warn-l)}
+.att-row.expired{border-color:var(--li);background:var(--bg);opacity:.55}
+.att-av{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;font-size:14px;flex-shrink:0}
+.att-name{flex:1;font-weight:700;font-size:13px}
+.att-info{font-size:10px;color:var(--mu);margin-top:1px}
+.att-btns{display:flex;gap:5px}
+.att-btn{width:34px;height:34px;border-radius:8px;border:1.5px solid var(--brd);background:var(--card);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:.15s;flex-shrink:0}
+.att-btn:hover{transform:scale(1.1)}
+.att-btn.active-p{background:var(--ok);border-color:var(--ok);box-shadow:0 0 0 3px var(--ok-l)}
+.att-btn.active-a{background:var(--err);border-color:var(--err);box-shadow:0 0 0 3px var(--err-l)}
+.att-btn.active-l{background:var(--warn);border-color:var(--warn);box-shadow:0 0 0 3px var(--warn-l)}
+.att-stats{display:flex;gap:6px;flex-wrap:wrap}
+.att-stat-chip{padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700}
+.session-card{background:var(--card);border:1px solid var(--brd);border-radius:var(--r);padding:14px;box-shadow:var(--sh);transition:.15s;cursor:pointer}
+.session-card:hover{box-shadow:var(--shm);transform:translateY(-1px)}
+.comp-badge{display:inline-flex;align-items:center;gap:3px;background:rgba(139,92,246,.14);color:var(--pur);border:1px solid rgba(139,92,246,.25);border-radius:6px;padding:2px 7px;font-size:10px;font-weight:700}
+/* Expiry warning */
+.exp-warning{background:var(--warn-l);border:1px solid rgba(245,158,11,.35);border-radius:9px;padding:8px 12px;margin-bottom:8px;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--warn);font-weight:600}
+
+
+/* ═══════════ ATTENDANCE SYSTEM v3 ═══════════ */
+.att-topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px}
+.att-topbar-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.att-topbar-left{display:flex;align-items:center;gap:8px}
+.att-date-nav{display:flex;align-items:center;gap:5px;background:var(--card);border:1px solid var(--brd);border-radius:10px;padding:4px}
+.att-nav-btn{width:30px;height:30px;border:none;background:transparent;cursor:pointer;font-size:18px;color:var(--mu);border-radius:7px;display:flex;align-items:center;justify-content:center;transition:.15s}
+.att-nav-btn:hover{background:var(--bg);color:var(--tx)}
+.att-date-inp{border:none;background:transparent;font-family:'Cairo',sans-serif;font-size:13px;font-weight:700;color:var(--tx);outline:none;padding:4px 6px}
+.att-today-btn{padding:5px 12px;border-radius:7px;border:1px solid var(--accent);background:rgba(245,166,35,.1);color:var(--accent);font-family:'Cairo',sans-serif;font-size:12px;font-weight:700;cursor:pointer;transition:.15s}
+.att-today-btn:hover{background:var(--accent);color:#fff}
+.att-day-label{font-size:13px;font-weight:700;color:var(--mu);padding:6px 12px;background:var(--bg);border-radius:8px;border:1px solid var(--brd)}
+.att-tab-switch{display:flex;gap:3px;background:var(--bg);border:1px solid var(--brd);border-radius:10px;padding:3px}
+.att-tab{padding:6px 14px;border-radius:8px;border:none;background:transparent;font-family:'Cairo',sans-serif;font-size:13px;font-weight:700;cursor:pointer;color:var(--mu);transition:.15s}
+.att-tab.active{background:var(--card);color:var(--accent);box-shadow:var(--sh)}
+.att-grp-tabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+.att-grp-tab{padding:7px 16px;border-radius:9px;border:1.5px solid var(--brd);background:var(--card);font-family:'Cairo',sans-serif;font-size:13px;font-weight:700;cursor:pointer;color:var(--mu);transition:.15s;display:flex;align-items:center;gap:6px}
+.att-grp-tab:hover{border-color:var(--accent);color:var(--accent)}
+.att-grp-tab.active{color:#fff;border-color:transparent}
+.att-grp-no-session{text-align:center;padding:50px 20px;color:var(--mu);font-size:14px}
+.att-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:10px}
+.att-card{border-radius:13px;border:2px solid var(--brd);background:var(--card);padding:14px 12px;cursor:pointer;transition:all .15s;user-select:none;position:relative;text-align:center;box-shadow:var(--sh)}
+.att-card:hover{transform:translateY(-2px);box-shadow:var(--shm)}
+.att-card:active{transform:scale(.97)}
+.att-card.status-present{border-color:#10b981;background:linear-gradient(135deg,#f0fdf4,#dcfce7)}
+.att-card.status-absent{border-color:#ef4444;background:linear-gradient(135deg,#fef2f2,#fee2e2)}
+.att-card.status-late{border-color:#f59e0b;background:linear-gradient(135deg,#fffbeb,#fef3c7)}
+.att-card.status-expired{border-color:#94a3b8;background:var(--bg);opacity:.55}
+.att-card.status-warning{border-color:#f59e0b;border-style:dashed}
+[data-dark] .att-card.status-present{background:rgba(16,185,129,.12)}
+[data-dark] .att-card.status-absent{background:rgba(239,68,68,.12)}
+[data-dark] .att-card.status-late{background:rgba(245,158,11,.12)}
+.att-card-av{width:44px;height:44px;border-radius:50%;margin:0 auto 8px;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:900;color:#fff;position:relative}
+.att-card-status-icon{position:absolute;bottom:-2px;right:-2px;width:18px;height:18px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;box-shadow:0 1px 4px rgba(0,0,0,.15)}
+.att-card-name{font-weight:800;font-size:13px;color:var(--tx);margin-bottom:3px;line-height:1.3}
+.att-card-sub{font-size:10px;color:var(--mu);margin-bottom:7px}
+.att-card-chips{display:flex;justify-content:center;gap:4px;flex-wrap:wrap}
+.att-chip{padding:1px 6px;border-radius:20px;font-size:10px;font-weight:700}
+.att-card-expiry{font-size:10px;margin-top:5px;font-weight:700}
+.att-card-press{position:absolute;top:0;left:0;right:0;bottom:0;border-radius:11px;background:rgba(245,158,11,.25);opacity:0;pointer-events:none;transition:opacity .1s}
+.comp-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2000;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:.2s}
+.comp-modal-overlay.open{opacity:1;pointer-events:all}
+.comp-modal{background:var(--card);border-radius:20px 20px 0 0;width:100%;max-width:520px;padding:22px 20px;transform:translateY(100%);transition:.25s cubic-bezier(.34,1.56,.64,1)}
+.comp-modal-overlay.open .comp-modal{transform:translateY(0)}
+.att-prv-header{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.att-search{flex:1;padding:9px 14px;border:1.5px solid var(--brd);border-radius:10px;font-family:'Cairo',sans-serif;font-size:13px;background:var(--card);color:var(--tx);outline:none;transition:.2s}
+.att-search:focus{border-color:var(--accent)}
+.att-prv-card{display:flex;align-items:center;gap:12px;padding:13px 15px;background:var(--card);border:1.5px solid var(--brd);border-radius:13px;margin-bottom:8px;transition:.15s}
+.att-prv-card:hover{border-color:var(--accent)}
+.att-prv-card.status-present{border-color:#10b981;background:rgba(16,185,129,.06)}
+.att-prv-card.status-absent{border-color:#ef4444;background:rgba(239,68,68,.06)}
+.att-prv-av{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:900;color:#fff;flex-shrink:0}
+.att-prv-info{flex:1;min-width:0}
+.att-prv-name{font-weight:800;font-size:14px}
+.att-prv-sub{font-size:11px;color:var(--mu);margin-top:2px}
+.att-prv-sessions{display:flex;gap:4px;margin-top:7px;flex-wrap:wrap}
+.session-pip{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.pip-used{background:#10b981}.pip-remain{background:#e2e8f0}.pip-warn{background:#f59e0b}.pip-empty{background:#ef4444}
+.att-prv-btns{display:flex;gap:6px;flex-shrink:0}
+.att-prv-btn{width:38px;height:38px;border-radius:10px;border:1.5px solid var(--brd);background:var(--card);cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;transition:.15s}
+.att-prv-btn:hover{transform:scale(1.1)}
+.att-prv-btn.p-active{background:#10b981;border-color:#10b981;box-shadow:0 0 0 3px rgba(16,185,129,.2)}
+.att-prv-btn.a-active{background:#ef4444;border-color:#ef4444;box-shadow:0 0 0 3px rgba(239,68,68,.2)}
+.att-rpt-grid{display:grid;grid-template-columns:1fr 1fr;gap:13px}
+@media(max-width:768px){.att-rpt-grid{grid-template-columns:1fr}.att-cards{grid-template-columns:repeat(auto-fill,minmax(130px,1fr))}}
+
+
+#days-picker label:hover{background:rgba(245,166,35,.1);border-color:var(--accent);color:var(--accent)}
 </style>
 </head>
 <body>
@@ -382,7 +475,33 @@ tr:hover td{background:var(--bg)}
         <div class="fg"><label class="fl">الحد الأقصى للطلاب</label><input id="gf-max" type="number" class="fi" value="12"></div>
       </div>
       <div class="fr">
-        <div class="fg"><label class="fl">أيام الدراسة</label><input id="gf-days" class="fi" placeholder="الأحد، الثلاثاء"></div>
+        <div class="fg" style="grid-column:1/-1">
+  <label class="fl">أيام الدراسة</label>
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px" id="days-picker">
+    <label class="prv-day" style="padding:6px 12px;border-radius:8px;border:1.5px solid var(--brd);cursor:pointer;font-size:12px;font-weight:700;user-select:none;transition:.15s">
+      <input type="checkbox" value="الأحد" style="display:none" onchange="updateDaysField()"> الأحد
+    </label>
+    <label class="prv-day" style="padding:6px 12px;border-radius:8px;border:1.5px solid var(--brd);cursor:pointer;font-size:12px;font-weight:700;user-select:none;transition:.15s">
+      <input type="checkbox" value="الاثنين" style="display:none" onchange="updateDaysField()"> الاثنين
+    </label>
+    <label class="prv-day" style="padding:6px 12px;border-radius:8px;border:1.5px solid var(--brd);cursor:pointer;font-size:12px;font-weight:700;user-select:none;transition:.15s">
+      <input type="checkbox" value="الثلاثاء" style="display:none" onchange="updateDaysField()"> الثلاثاء
+    </label>
+    <label class="prv-day" style="padding:6px 12px;border-radius:8px;border:1.5px solid var(--brd);cursor:pointer;font-size:12px;font-weight:700;user-select:none;transition:.15s">
+      <input type="checkbox" value="الأربعاء" style="display:none" onchange="updateDaysField()"> الأربعاء
+    </label>
+    <label class="prv-day" style="padding:6px 12px;border-radius:8px;border:1.5px solid var(--brd);cursor:pointer;font-size:12px;font-weight:700;user-select:none;transition:.15s">
+      <input type="checkbox" value="الخميس" style="display:none" onchange="updateDaysField()"> الخميس
+    </label>
+    <label class="prv-day" style="padding:6px 12px;border-radius:8px;border:1.5px solid var(--brd);cursor:pointer;font-size:12px;font-weight:700;user-select:none;transition:.15s">
+      <input type="checkbox" value="الجمعة" style="display:none" onchange="updateDaysField()"> الجمعة
+    </label>
+    <label class="prv-day" style="padding:6px 12px;border-radius:8px;border:1.5px solid var(--brd);cursor:pointer;font-size:12px;font-weight:700;user-select:none;transition:.15s">
+      <input type="checkbox" value="السبت" style="display:none" onchange="updateDaysField()"> السبت
+    </label>
+  </div>
+  <input type="hidden" id="gf-days">
+</div>
         <div class="fg"><label class="fl">وقت الحصة</label><input id="gf-time" class="fi" placeholder="4:00 - 5:30م"></div>
       </div>
       <div class="fr">
@@ -589,6 +708,40 @@ CREATE POLICY "allow_all" ON bealqalam_data
   </div>
 </div>
 
+
+<!-- COMPENSATION MODAL -->
+<div class="comp-modal-overlay" id="comp-modal" onclick="if(event.target===this)closeCompModal()">
+  <div class="comp-modal">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div>
+        <div style="font-weight:900;font-size:15px">🔄 إضافة حصة تعويضية</div>
+        <div style="font-size:12px;color:var(--mu);margin-top:2px" id="comp-stu-name"></div>
+      </div>
+      <button class="mc" onclick="closeCompModal()">✕</button>
+    </div>
+    <div class="fg">
+      <label class="fl">سبب الغياب / ملاحظات</label>
+      <input class="fi" id="comp-reason" placeholder="مثال: غياب بعذر — مرض — سفر...">
+    </div>
+    <div class="fg" style="margin-top:10px">
+      <label class="fl">عدد الحصص التعويضية</label>
+      <div style="display:flex;gap:8px;margin-top:5px">
+        <button class="btn btn-gh" style="flex:1;font-size:18px" onclick="document.getElementById('comp-count').value=1;setCompCount(1)">1 حصة</button>
+        <button class="btn btn-gh" style="flex:1;font-size:18px" onclick="document.getElementById('comp-count').value=2;setCompCount(2)">2 حصة</button>
+        <button class="btn btn-gh" style="flex:1;font-size:18px" onclick="document.getElementById('comp-count').value=3;setCompCount(3)">3 حصص</button>
+      </div>
+      <input type="number" class="fi" id="comp-count" value="1" min="1" max="10" style="margin-top:8px" placeholder="أو أدخل عدد مخصص">
+    </div>
+    <div style="background:var(--info-l);border:1px solid rgba(59,130,246,.25);border-radius:9px;padding:10px 12px;margin-top:10px;font-size:12px;color:var(--info)">
+      💡 كل حصة تعويضية ستمدد تاريخ انتهاء الاشتراك تلقائياً
+    </div>
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <button class="btn btn-gh" style="flex:1" onclick="closeCompModal()">تخطي</button>
+      <button class="btn btn-ok" style="flex:2" onclick="saveComp()">✓ حفظ التعويض</button>
+    </div>
+  </div>
+</div>
+
 <!-- APP -->
 <div id="app" style="display:none;width:100%;flex:1;min-height:100vh">
 
@@ -620,6 +773,9 @@ CREATE POLICY "allow_all" ON bealqalam_data
     <div class="sb-sec">المالية</div>
     <div class="ni" data-page="finance">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>المالية الشهرية
+    </div>
+    <div class="ni" data-page="attendance">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>الحضور
     </div>
     <div class="ni" data-page="alerts">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>التنبيهات
@@ -818,6 +974,95 @@ CREATE POLICY "allow_all" ON bealqalam_data
       </div>
     </div>
 
+
+    <!-- ATTENDANCE PAGE -->
+    <div class="page" id="page-attendance">
+
+      <!-- Top controls -->
+      <div class="att-topbar">
+        <div class="att-topbar-right">
+          <div class="att-date-nav">
+            <button class="att-nav-btn" onclick="attShiftDate(-1)">&#8250;</button>
+            <input type="date" id="att-date" class="att-date-inp" onchange="attOnDateChange()">
+            <button class="att-nav-btn" onclick="attShiftDate(1)">&#8249;</button>
+            <button class="att-today-btn" onclick="attGoToday()">اليوم</button>
+          </div>
+          <div class="att-day-label" id="att-day-label"></div>
+        </div>
+        <div class="att-topbar-left">
+          <div class="att-tab-switch">
+            <button class="att-tab active" id="atab-groups" onclick="switchAttMain('groups',this)">👥 المجموعات</button>
+            <button class="att-tab" id="atab-private" onclick="switchAttMain('private',this)">👤 الخصوصي</button>
+            <button class="att-tab" id="atab-reports" onclick="switchAttMain('reports',this)">📊 التقارير</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Auto-save indicator -->
+      <div id="att-autosave" style="display:none;position:fixed;bottom:20px;left:20px;background:#10b981;color:#fff;padding:8px 16px;border-radius:20px;font-size:12px;font-weight:700;z-index:500;box-shadow:0 4px 12px rgba(16,185,129,.4);animation:fadeIn .2s">✓ حُفظ تلقائياً</div>
+
+      <!-- SECTION: GROUPS -->
+      <div id="att-section-groups">
+        <!-- Group tabs -->
+        <div class="att-grp-tabs" id="att-grp-tabs"></div>
+        <!-- Attendance cards -->
+        <div id="att-cards-wrap"></div>
+      </div>
+
+      <!-- SECTION: PRIVATE -->
+      <div id="att-section-private" style="display:none">
+        <div class="att-prv-header">
+          <input class="att-search" placeholder="🔍 بحث عن طالب..." oninput="attPrvSearch(this.value)" id="att-prv-search">
+          <div style="font-size:12px;color:var(--mu)" id="att-prv-count"></div>
+        </div>
+        <div id="att-prv-list"></div>
+      </div>
+
+      <!-- SECTION: REPORTS -->
+      <div id="att-section-reports" style="display:none">
+        <div class="att-rpt-grid">
+          <!-- Daily report -->
+          <div class="card">
+            <div class="ch"><div class="ct">📋 تقرير الحضور اليومي</div></div>
+            <div class="cb">
+              <div style="display:flex;gap:9px;margin-bottom:12px;flex-wrap:wrap">
+                <select class="fi" id="rpt-grp" style="width:180px"><option value="">كل المجموعات</option></select>
+                <input type="date" class="fi" id="rpt-date" style="width:150px">
+                <button class="btn btn-ac btn-sm" onclick="genDailyReport()">عرض</button>
+                <button class="btn btn-gh btn-sm" onclick="printDailyReport()">🖨 طباعة</button>
+              </div>
+              <div id="rpt-daily-body"></div>
+            </div>
+          </div>
+          <!-- Stats -->
+          <div class="card">
+            <div class="ch"><div class="ct">📊 إحصائيات الشهر</div></div>
+            <div class="cb">
+              <div style="display:flex;gap:9px;margin-bottom:12px;flex-wrap:wrap">
+                <select class="fi" id="rpt-month-sel" style="width:170px"></select>
+                <button class="btn btn-ac btn-sm" onclick="genMonthStats()">عرض</button>
+              </div>
+              <div id="rpt-month-body"></div>
+            </div>
+          </div>
+          <!-- Expiry report -->
+          <div class="card" style="grid-column:1/-1">
+            <div class="ch">
+              <div class="ct">⚠️ الاشتراكات والتنبيهات</div>
+              <div style="display:flex;gap:7px">
+                <button class="btn btn-gh btn-sm" onclick="printExpiryReport()">🖨 طباعة</button>
+              </div>
+            </div>
+            <div class="tw"><table>
+              <thead><tr><th>الطالب</th><th>المجموعة</th><th>نوع</th><th>انتهاء</th><th>الحالة</th><th>حصص متبقية</th><th>نسبة الحضور</th><th></th></tr></thead>
+              <tbody id="rpt-expiry-body"></tbody>
+            </table></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
     <!-- ALERTS -->
     <div class="page" id="page-alerts">
       <div style="max-width:680px" id="alrt-body"></div>
@@ -844,6 +1089,7 @@ const get = (k, d) => {
 // Local write + queue cloud sync
 const set = (k, v) => {
   localStorage.setItem(DB(k), JSON.stringify(v));
+  localStorage.setItem(DB(k)+'_localts', new Date().toISOString());
   _cloudQueue.add(k);
   _schedulePush();
 };
@@ -922,10 +1168,12 @@ async function _pullFromCloud() {
     let updated = 0;
     rows.forEach(row => {
       if (row.value && row.value !== 'null') {
-        // Compare timestamps — take newer
-        const localTs = localStorage.getItem(DB(row.key + '_ts'));
-        const cloudTs = row.updated_at;
-        if (!localTs || cloudTs > localTs) {
+        const cloudTs  = row.updated_at;
+        const localTs  = localStorage.getItem(DB(row.key + '_ts'));
+        // Local edit timestamp — if user edited locally AFTER last cloud sync, keep local
+        const localEditTs = localStorage.getItem(DB(row.key) + '_localts');
+        const takeCloud = !localTs || (cloudTs > localTs && (!localEditTs || cloudTs > localEditTs));
+        if (takeCloud) {
           localStorage.setItem(DB(row.key), row.value);
           localStorage.setItem(DB(row.key + '_ts'), cloudTs);
           updated++;
@@ -1341,11 +1589,11 @@ function goPage(name){
   document.getElementById('page-'+name).classList.add('active');
   const el=document.querySelector('[data-page="'+name+'"]');
   if(el) el.classList.add('active');
-  const T={dashboard:['لوحة التحكم','ملخص الأداء'],students:['الطلاب','قائمة وإدارة الطلاب'],groups:['المجموعات','إدارة المجموعات التعليمية'],finance:['المالية الشهرية','الإيرادات حسب الشهر'],teachers:['المعلمون','إدارة المعلمين والجداول'],users:['المستخدمون','إدارة الصلاحيات والحسابات'],alerts:['التنبيهات','تنبيهات تحتاج انتباهك']};
+  const T={dashboard:['لوحة التحكم','ملخص الأداء'],students:['الطلاب','قائمة وإدارة الطلاب'],groups:['المجموعات','إدارة المجموعات التعليمية'],finance:['المالية الشهرية','الإيرادات حسب الشهر'],teachers:['المعلمون','إدارة المعلمين والجداول'],users:['المستخدمون','إدارة الصلاحيات والحسابات'],alerts:['التنبيهات','تنبيهات تحتاج انتباهك'],attendance:['الحضور والغياب','تسجيل ومتابعة الحضور']};
   const t=T[name]||['',''];
   document.getElementById('pg-ttl').textContent=t[0];
   document.getElementById('pg-sub').textContent=t[1];
-  ({dashboard:renderDashboard,students:renderStudents,groups:renderGroups,finance:renderFinance,teachers:renderTeachers,users:renderUsersPage,alerts:renderAlerts}[name]||function(){})();
+  ({dashboard:renderDashboard,students:renderStudents,groups:renderGroups,finance:renderFinance,teachers:renderTeachers,users:renderUsersPage,alerts:renderAlerts,attendance:initAttendancePage}[name]||function(){})();
 }
 
 // ═══════════════════════════
@@ -1640,7 +1888,7 @@ function openGrpMo(id){
     document.getElementById('gf-name').value=g.name||'';
     document.getElementById('gf-type').value=g.type||'group';
     document.getElementById('gf-max').value=g.max||12;
-    document.getElementById('gf-days').value=g.days||'';
+    loadDaysInPicker(g.days||'');
     document.getElementById('gf-time').value=g.time||'';
     document.getElementById('gf-tchr').value=g.teacher||'';
     document.getElementById('gf-fee').value=g.fee||'';
@@ -1650,7 +1898,8 @@ function openGrpMo(id){
       x.classList.toggle('sel',x.dataset.c===g.color);
     });
   } else {
-    ['gf-name','gf-days','gf-time','gf-tchr','gf-fee'].forEach(x=>document.getElementById(x).value='');
+    ['gf-name','gf-time','gf-tchr','gf-fee'].forEach(x=>document.getElementById(x).value='');
+    loadDaysInPicker('');
     document.getElementById('gf-max').value=12;
     document.getElementById('gf-type').value='group';
   }
@@ -2642,6 +2891,763 @@ function _initPrvSchedForModal(id){
     const grpSel = document.getElementById('sf-grp');
     if(grpSel) grpSel.onchange = _checkPrvSection;
   }, 60);
+}
+
+
+
+// ══════════════════════════════════════════════════════
+// ATTENDANCE SYSTEM v3 — Smart & Professional
+// ══════════════════════════════════════════════════════
+const ATT_KEY  = 'att_v3';
+const COMP_KEY = 'comp_v3';
+const DAY_AR   = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+
+let _attCurrentGrp  = null;
+let _attCurrentDate = new Date().toISOString().split('T')[0];
+let _attMainSection = 'groups';
+let _longPressTimer = null;
+let _compTargetStu  = null;
+
+// ── Helpers ──
+const attSid   = (grpId,date) => `${grpId}||${date}`;
+const attGetRec = (grpId,date) => (get(ATT_KEY,{})[attSid(grpId,date)])||{};
+const dayLabel  = date => { const d=new Date(date); return DAY_AR[d.getDay()]+' '+d.toLocaleDateString('ar-BH',{day:'numeric',month:'long',year:'numeric'}); };
+
+function attAutoSave(){
+  const el = document.getElementById('att-autosave');
+  if(!el) return;
+  el.style.display='block';
+  clearTimeout(el._t);
+  el._t = setTimeout(()=>el.style.display='none', 2000);
+}
+
+// ── Date navigation ──
+function attShiftDate(n){
+  const d = new Date(_attCurrentDate);
+  d.setDate(d.getDate()+n);
+  _attCurrentDate = d.toISOString().split('T')[0];
+  document.getElementById('att-date').value = _attCurrentDate;
+  attOnDateChange();
+}
+function attGoToday(){
+  _attCurrentDate = new Date().toISOString().split('T')[0];
+  document.getElementById('att-date').value = _attCurrentDate;
+  attOnDateChange();
+}
+function attOnDateChange(){
+  _attCurrentDate = document.getElementById('att-date').value;
+  document.getElementById('att-day-label').textContent = dayLabel(_attCurrentDate);
+  if(_attMainSection==='groups') renderAttGroups();
+  if(_attMainSection==='private') renderAttPrivate();
+}
+
+// ── Main section switch ──
+function switchAttMain(sec, btn){
+  _attMainSection = sec;
+  ['groups','private','reports'].forEach(s=>{
+    const el = document.getElementById('att-section-'+s);
+    if(el) el.style.display = s===sec ? 'block' : 'none';
+  });
+  document.querySelectorAll('.att-tab').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  if(sec==='groups')  renderAttGroups();
+  if(sec==='private') renderAttPrivate();
+  if(sec==='reports') initAttReports();
+}
+
+// ════════════════════════════════════════════
+// GROUPS ATTENDANCE
+// ════════════════════════════════════════════
+function getGroupsForDate(dateStr){
+  const d       = new Date(dateStr);
+  const dayIdx  = d.getDay();
+  const dayName = DAY_AR[dayIdx];
+  return get('groups',[]).filter(g => {
+    if(g.type==='private') return false;
+    if(!g.days) return false;
+    // Support: array, comma-separated, arabic comma, space-separated
+    let daysList = [];
+    if(Array.isArray(g.days)){
+      daysList = g.days;
+    } else {
+      daysList = g.days.split(/[،,\u0020]+/).map(x=>x.trim()).filter(Boolean);
+    }
+    // Match by name OR by index
+    return daysList.some(d2 => {
+      if(d2 === dayName) return true;
+      if(!isNaN(Number(d2)) && Number(d2) === dayIdx) return true;
+      return false;
+    });
+  });
+}
+
+function getActiveStudentsForGroup(grpId, dateStr){
+  const stus  = get('students',[]);
+  const today = new Date(dateStr);
+  return stus.filter(s=>{
+    if(s.archived || s.group!==grpId) return false;
+    if(s.end){
+      const grace = new Date(s.end);
+      grace.setDate(grace.getDate()+5);
+      if(today > grace) return false;
+    }
+    return true;
+  });
+}
+
+function renderAttGroups(){
+  const grps = getGroupsForDate(_attCurrentDate);
+  const tabsEl = document.getElementById('att-grp-tabs');
+  const wrapEl = document.getElementById('att-cards-wrap');
+
+  if(!grps.length){
+    tabsEl.innerHTML='';
+    // Show all groups button
+    const allGrps = get('groups',[]).filter(g=>g.type!=='private');
+    wrapEl.innerHTML=`
+      <div class="att-grp-no-session">
+        📅 لا توجد مجموعات مجدولة ${dayLabel(_attCurrentDate)}
+        ${allGrps.length?`<div style="margin-top:14px">
+          <button class="btn btn-gh btn-sm" onclick="renderAttAllGroups()">عرض كل المجموعات</button>
+        </div>`:''}
+        <div style="margin-top:10px;font-size:12px;color:var(--li)">
+          💡 تأكد من تحديد أيام الدراسة في إعدادات كل مجموعة
+        </div>
+      </div>`;
+    return;
+  }
+
+  // Set first group if none selected or selected not in today's groups
+  if(!_attCurrentGrp || !grps.find(g=>g.id===_attCurrentGrp)){
+    _attCurrentGrp = grps[0].id;
+  }
+
+  // Render group tabs
+  tabsEl.innerHTML = grps.map(g=>{
+    const recs  = attGetRec(g.id, _attCurrentDate);
+    const stus  = getActiveStudentsForGroup(g.id, _attCurrentDate);
+    const present = stus.filter(s=>recs[s.id]==='present').length;
+    const absent  = stus.filter(s=>recs[s.id]==='absent').length;
+    return `<div class="att-grp-tab ${_attCurrentGrp===g.id?'active':''}"
+                 style="${_attCurrentGrp===g.id?'background:'+g.color+';color:#fff':''}"
+                 onclick="selectAttGrp('${g.id}')">
+      <span>${g.name}</span>
+      <span style="font-size:11px;opacity:.8">✅${present} ❌${absent}</span>
+    </div>`;
+  }).join('');
+
+  renderAttCards(_attCurrentGrp);
+}
+
+function selectAttGrp(grpId){
+  _attCurrentGrp = grpId;
+  renderAttGroups();
+}
+
+function renderAttCards(grpId){
+  const grps  = get('groups',[]);
+  const grp   = grps.find(g=>g.id===grpId);
+  const stus  = getActiveStudentsForGroup(grpId, _attCurrentDate);
+  const recs  = attGetRec(grpId, _attCurrentDate);
+  const comp  = get(COMP_KEY,{});
+  const today = new Date(_attCurrentDate);
+  const wrapEl= document.getElementById('att-cards-wrap');
+
+  // Session info
+  const sessionInfo = `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding:10px 14px;background:var(--bg);border-radius:10px;border:1px solid var(--brd)">
+    <div style="font-size:12px;color:var(--mu)">⏰ ${grp?.time||'الوقت غير محدد'} &nbsp;|&nbsp; 📅 ${grp?.days||''}</div>
+    <div style="display:flex;gap:8px">
+      <span style="font-size:12px;font-weight:700;color:var(--ok)">✅ ${stus.filter(s=>recs[s.id]==='present').length}</span>
+      <span style="font-size:12px;font-weight:700;color:var(--err)">❌ ${stus.filter(s=>recs[s.id]==='absent').length}</span>
+      <span style="font-size:12px;font-weight:700;color:var(--warn)">⏰ ${stus.filter(s=>recs[s.id]==='late').length}</span>
+      <button class="btn btn-gh btn-sm" onclick="printAttSheet('${grpId}')">🖨</button>
+    </div>
+  </div>`;
+
+  if(!stus.length){
+    wrapEl.innerHTML = sessionInfo + '<div class="att-grp-no-session">لا يوجد طلاب نشطون في هذه المجموعة</div>';
+    return;
+  }
+
+  const cards = stus.map(s=>{
+    const status  = recs[s.id] || 'none';
+    const isExp   = s.end && new Date(s.end) < today;
+    const dLeft   = s.end ? Math.ceil((new Date(s.end)-today)/864e5) : 999;
+    const isWarn  = !isExp && dLeft <= 7;
+    const cardCls = isExp ? 'status-expired' : isWarn ? 'status-warning' : (status!=='none'?'status-'+status:'');
+
+    // Absence count this month
+    const monthKey = _attCurrentDate.slice(0,7);
+    const allRecs  = get(ATT_KEY,{});
+    let absCount=0, presCount=0, lateCount=0;
+    Object.entries(allRecs).forEach(([sid,rec])=>{
+      if(!sid.startsWith(grpId+'||')) return;
+      const d = sid.split('||')[1];
+      if(d && d.startsWith(monthKey)){
+        if(rec[s.id]==='absent') absCount++;
+        else if(rec[s.id]==='present') presCount++;
+        else if(rec[s.id]==='late') lateCount++;
+      }
+    });
+    const stuComp = (comp[s.id]||[]).filter(c=>c.date?.startsWith(monthKey)).reduce((a,c)=>a+(c.count||1),0);
+
+    // Status icon
+    const icons = {present:'✅',absent:'❌',late:'⏰',none:''};
+    const icon  = icons[status]||'';
+
+    // Expiry display
+    const expiryTxt = isExp
+      ? `<div class="att-card-expiry" style="color:var(--err)">منتهي ⚠</div>`
+      : isWarn
+      ? `<div class="att-card-expiry" style="color:var(--warn)">ينتهي ${dLeft}د ⚠</div>`
+      : s.end
+      ? `<div class="att-card-expiry" style="color:var(--li)">${s.end}</div>`
+      : '';
+
+    return `<div class="att-card ${cardCls}" id="acard-${s.id}"
+               onclick="attTapCard('${s.id}','${grpId}',event)"
+               onmousedown="attPressStart('${s.id}','${grpId}')"
+               onmouseup="attPressEnd()"
+               onmouseleave="attPressEnd()"
+               ontouchstart="attPressStart('${s.id}','${grpId}')"
+               ontouchend="attPressEnd()">
+      <div class="att-card-press" id="press-${s.id}"></div>
+      <div class="att-card-av" style="background:${grp?.color||'#3b82f6'}">
+        ${s.name.charAt(0)}
+        ${icon?`<div class="att-card-status-icon">${icon}</div>`:''}
+      </div>
+      <div class="att-card-name">${s.name}</div>
+      <div class="att-card-sub">${s.phone||''}</div>
+      <div class="att-card-chips">
+        ${presCount?`<span class="att-chip" style="background:var(--ok-l);color:var(--ok)">✅${presCount}</span>`:''}
+        ${absCount?`<span class="att-chip" style="background:var(--err-l);color:var(--err)">❌${absCount}</span>`:''}
+        ${stuComp?`<span class="att-chip" style="background:var(--pur-l);color:var(--pur)">🔄${stuComp}</span>`:''}
+      </div>
+      ${expiryTxt}
+    </div>`;
+  }).join('');
+
+  wrapEl.innerHTML = sessionInfo + `<div class="att-cards">${cards}</div>`;
+}
+
+// ── Tap = cycle status ──
+function attTapCard(stuId, grpId, e){
+  e.stopPropagation();
+  const recs = attGetRec(grpId, _attCurrentDate);
+  const cur  = recs[stuId] || 'none';
+
+  // Check if expired — block if not admin
+  const stus   = get('students',[]);
+  const s      = stus.find(x=>x.id===stuId);
+  const today  = new Date(_attCurrentDate);
+  if(s?.end && new Date(s.end) < today && currentUser?.role !== 'admin'){
+    toast('انتهى اشتراك هذا الطالب — تواصل مع المدير','err');
+    return;
+  }
+
+  const cycle  = {none:'present', present:'absent', absent:'late', late:'none'};
+  const next   = cycle[cur];
+
+  const allAtt = get(ATT_KEY,{});
+  const sid    = attSid(grpId, _attCurrentDate);
+  if(!allAtt[sid]) allAtt[sid]={};
+
+  if(next==='none'){
+    delete allAtt[sid][stuId];
+  } else {
+    allAtt[sid][stuId] = next;
+    // If absent → offer compensation
+    if(next==='absent'){
+      setTimeout(()=>openCompModal(stuId, grpId), 300);
+    }
+  }
+  set(ATT_KEY, allAtt);
+  attAutoSave();
+  renderAttCards(grpId);
+  renderAttGroups(); // update tab counters
+}
+
+// ── Long press = late ──
+function attPressStart(stuId, grpId){
+  attPressEnd();
+  const pressEl = document.getElementById('press-'+stuId);
+  if(pressEl) pressEl.style.opacity='1';
+  _longPressTimer = setTimeout(()=>{
+    if(pressEl) pressEl.style.opacity='0';
+    // Set to late directly
+    const allAtt = get(ATT_KEY,{});
+    const sid    = attSid(grpId, _attCurrentDate);
+    if(!allAtt[sid]) allAtt[sid]={};
+    allAtt[sid][stuId]='late';
+    set(ATT_KEY, allAtt);
+    attAutoSave();
+    toast('⏰ تم تسجيل تأخر');
+    renderAttCards(grpId);
+    renderAttGroups();
+  }, 700);
+}
+function attPressEnd(){
+  clearTimeout(_longPressTimer);
+  document.querySelectorAll('.att-card-press').forEach(el=>el.style.opacity='0');
+}
+
+// ════════════════════════════════════════════
+// COMPENSATION MODAL
+// ════════════════════════════════════════════
+function openCompModal(stuId, grpId){
+  _compTargetStu = {stuId, grpId};
+  const stus = get('students',[]);
+  const s    = stus.find(x=>x.id===stuId);
+  document.getElementById('comp-stu-name').textContent = s?.name || '';
+  document.getElementById('comp-count').value = '1';
+  document.getElementById('comp-reason').value = '';
+  document.getElementById('comp-modal').classList.add('open');
+}
+function closeCompModal(){
+  document.getElementById('comp-modal').classList.remove('open');
+}
+function saveComp(){
+  const {stuId, grpId} = _compTargetStu || {};
+  if(!stuId) return;
+  const count  = Number(document.getElementById('comp-count').value)||1;
+  const reason = document.getElementById('comp-reason').value.trim();
+  const stus   = get('students',[]);
+  const idx    = stus.findIndex(s=>s.id===stuId);
+  if(idx<0) return;
+
+  // Save compensation record
+  const comp = get(COMP_KEY,{});
+  if(!comp[stuId]) comp[stuId]=[];
+  comp[stuId].push({date:_attCurrentDate, count, reason, addedAt:new Date().toISOString(), by: currentUser?.name||'النظام'});
+  set(COMP_KEY, comp);
+
+  // Extend subscription end date
+  if(stus[idx].end){
+    const grps    = get('groups',[]);
+    const grp     = grps.find(g=>g.id===stus[idx].group);
+    const daysPerSession = getDaysPerSession(grp);
+    const endDate = new Date(stus[idx].end);
+    endDate.setDate(endDate.getDate() + count * daysPerSession);
+    stus[idx].end = endDate.toISOString().split('T')[0];
+    set('students', stus);
+  }
+
+  toast(`✓ تم إضافة ${count} حصة تعويضية — الاشتراك مُمدد`);
+  closeCompModal();
+  renderAttCards(grpId);
+}
+
+function getDaysPerSession(grp){
+  if(!grp?.days) return 3;
+  const cnt = grp.days.split(/[،,]/).filter(Boolean).length;
+  return cnt ? Math.round(7/cnt) : 3;
+}
+
+// ════════════════════════════════════════════
+// PRIVATE STUDENTS ATTENDANCE
+// ════════════════════════════════════════════
+function getPrivateStudentsForDate(dateStr){
+  const d      = new Date(dateStr);
+  const dayIdx = d.getDay();
+  const dayName= DAY_AR[dayIdx];
+  return get('students',[]).filter(s=>{
+    const grps = get('groups',[]);
+    const g    = grps.find(x=>x.id===s.group);
+    if(!g || g.type!=='private') return false;
+    if(s.archived) return false;
+    if(!s.prvSched) return false;
+    return Object.keys(s.prvSched).some(k=>{
+      const ki = Number(k);
+      return ki === dayIdx || DAY_AR[ki] === dayName;
+    });
+  });
+}
+
+function renderAttPrivate(filter=''){
+  const stus   = getPrivateStudentsForDate(_attCurrentDate);
+  const grps   = get('groups',[]);
+  const comp   = get(COMP_KEY,{});
+  const today  = new Date(_attCurrentDate);
+  const allAtt = get(ATT_KEY,{});
+  const monthKey = _attCurrentDate.slice(0,7);
+
+  const filtered = filter
+    ? stus.filter(s=>s.name.includes(filter)||s.phone?.includes(filter))
+    : stus;
+
+  document.getElementById('att-prv-count').textContent = `${filtered.length} طالب اليوم`;
+
+  if(!filtered.length){
+    document.getElementById('att-prv-list').innerHTML =
+      `<div style="text-align:center;padding:50px;color:var(--mu)">لا يوجد طلاب خصوصي مجدولون ${filter?'بهذا البحث':dayLabel(_attCurrentDate)}</div>`;
+    return;
+  }
+
+  document.getElementById('att-prv-list').innerHTML = filtered.map(s=>{
+    const g      = grps.find(x=>x.id===s.group);
+    const grpSid = attSid(s.group, _attCurrentDate);
+    const rec    = (allAtt[grpSid]||{})[s.id] || 'none';
+
+    // Sessions used this month
+    let usedCount = 0;
+    Object.entries(allAtt).forEach(([sid,recs])=>{
+      if(!sid.startsWith(s.group+'||')) return;
+      const d = sid.split('||')[1];
+      if(d?.startsWith(monthKey)){
+        const st = recs[s.id];
+        if(st==='present'||st==='late') usedCount++;
+      }
+    });
+
+    const monthly = Number(s.monthlySessionCount)||8;
+    const compUsed= (comp[s.id]||[]).filter(c=>c.date?.startsWith(monthKey)).reduce((a,c)=>a+(c.count||1),0);
+    const total   = monthly + compUsed;
+    const remain  = Math.max(0, total - usedCount);
+    const pct     = Math.round(usedCount/total*100);
+
+    const isExp   = remain <= 0;
+    const isWarn  = !isExp && remain <= 2;
+    const todaySlot = s.prvSched?.[new Date(_attCurrentDate).getDay()] || '';
+
+    // Visual pips
+    const pips = Array.from({length:Math.min(total,12)},(_,i)=>{
+      if(i < usedCount) return `<div class="session-pip pip-used"></div>`;
+      if(isWarn) return `<div class="session-pip pip-warn"></div>`;
+      if(isExp)  return `<div class="session-pip pip-empty"></div>`;
+      return `<div class="session-pip pip-remain"></div>`;
+    }).join('');
+
+    return `<div class="att-prv-card ${rec!=='none'?'status-'+rec:''}" id="aprv-${s.id}">
+      <div class="att-prv-av" style="background:${g?.color||'#0ea5e9'}">${s.name.charAt(0)}</div>
+      <div class="att-prv-info">
+        <div class="att-prv-name">
+          ${s.name}
+          ${todaySlot?`<span style="font-size:10px;color:var(--mu);margin-right:6px">⏰${todaySlot}</span>`:''}
+          ${isExp?'<span style="font-size:10px;color:var(--err)"> ⛔ انتهت الحصص</span>':''}
+          ${isWarn?`<span style="font-size:10px;color:var(--warn)"> ⚠ ${remain} حصة متبقية</span>`:''}
+        </div>
+        <div class="att-prv-sub">${g?.name||''} | ${usedCount}/${total} حصة (${pct}%)</div>
+        <div class="att-prv-sessions">${pips}</div>
+      </div>
+      <div class="att-prv-btns">
+        <div class="att-prv-btn ${rec==='present'?'p-active':''}"
+             onclick="attPrvTap('${s.id}','present',event)"
+             title="حاضر">✅</div>
+        <div class="att-prv-btn ${rec==='absent'?'a-active':''}"
+             onclick="attPrvTap('${s.id}','absent',event)"
+             title="غائب">❌</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function attPrvTap(stuId, status, e){
+  e.stopPropagation();
+  const stus = get('students',[]);
+  const grps = get('groups',[]);
+  const s    = stus.find(x=>x.id===stuId);
+  const g    = grps.find(x=>x.id===s?.group);
+  if(!g) return;
+
+  // Check session limit
+  if(status==='present'){
+    const monthly  = Number(s.monthlySessionCount)||8;
+    const comp     = get(COMP_KEY,{});
+    const monthKey = _attCurrentDate.slice(0,7);
+    const allAtt   = get(ATT_KEY,{});
+    let used=0;
+    Object.entries(allAtt).forEach(([sid,recs])=>{
+      if(!sid.startsWith(g.id+'||')) return;
+      if(sid.split('||')[1]?.startsWith(monthKey)){
+        if(recs[stuId]==='present'||recs[stuId]==='late') used++;
+      }
+    });
+    const compUsed=(comp[stuId]||[]).filter(c=>c.date?.startsWith(monthKey)).reduce((a,c)=>a+(c.count||1),0);
+    const remain = (monthly+compUsed) - used;
+    if(remain<=0){
+      toast('انتهت حصص هذا الطالب — يجب التجديد','err');
+      return;
+    }
+  }
+
+  const allAtt = get(ATT_KEY,{});
+  const sid    = attSid(g.id, _attCurrentDate);
+  if(!allAtt[sid]) allAtt[sid]={};
+
+  // Toggle
+  if(allAtt[sid][stuId]===status){
+    delete allAtt[sid][stuId];
+  } else {
+    allAtt[sid][stuId]=status;
+    if(status==='absent') setTimeout(()=>openCompModal(stuId,g.id),300);
+  }
+  set(ATT_KEY, allAtt);
+  attAutoSave();
+  renderAttPrivate(document.getElementById('att-prv-search')?.value||'');
+}
+
+function attPrvSearch(v){
+  renderAttPrivate(v);
+}
+
+// ════════════════════════════════════════════
+// REPORTS
+// ════════════════════════════════════════════
+function initAttReports(){
+  const grps = get('groups',[]);
+  const gsel = document.getElementById('rpt-grp');
+  if(gsel) gsel.innerHTML = '<option value="">كل المجموعات</option>'+grps.map(g=>`<option value="${g.id}">${g.name}</option>`).join('');
+
+  const today = new Date().toISOString().split('T')[0];
+  const rdt   = document.getElementById('rpt-date');
+  if(rdt&&!rdt.value) rdt.value=today;
+
+  // Month select
+  const msel = document.getElementById('rpt-month-sel');
+  if(msel){
+    const opts=[];
+    for(let i=0;i<6;i++){
+      const d=new Date(); d.setMonth(d.getMonth()-i);
+      const mk=d.toISOString().slice(0,7);
+      opts.push(`<option value="${mk}">${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}</option>`);
+    }
+    msel.innerHTML=opts.join('');
+  }
+  genExpiryReport();
+}
+
+function genDailyReport(){
+  const grpId = document.getElementById('rpt-grp').value;
+  const date  = document.getElementById('rpt-date').value;
+  if(!date) return;
+  const allAtt= get(ATT_KEY,{});
+  const grps  = get('groups',[]);
+  const stus  = get('students',[]);
+
+  const targetGrps = grpId ? grps.filter(g=>g.id===grpId) : grps;
+  let html='';
+  targetGrps.forEach(g=>{
+    const recs = allAtt[attSid(g.id,date)]||{};
+    const gStus= stus.filter(s=>s.group===g.id&&!s.archived);
+    if(!gStus.length) return;
+    const P=gStus.filter(s=>recs[s.id]==='present').length;
+    const A=gStus.filter(s=>recs[s.id]==='absent').length;
+    const L=gStus.filter(s=>recs[s.id]==='late').length;
+    html+=`<div style="margin-bottom:14px">
+      <div style="font-weight:800;font-size:14px;padding:8px 12px;background:${g.color}22;border-right:3px solid ${g.color};border-radius:0 8px 8px 0;margin-bottom:8px">
+        ${g.name} &nbsp; ✅${P} ❌${A} ⏰${L}
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:7px">
+        ${gStus.map(s=>{
+          const st=recs[s.id]||'none';
+          const ic={present:'✅',absent:'❌',late:'⏰',none:'○'}[st];
+          const col={present:'var(--ok)',absent:'var(--err)',late:'var(--warn)',none:'var(--li)'}[st];
+          return `<span style="padding:4px 10px;border-radius:20px;font-size:12px;font-weight:700;background:${col}22;color:${col};border:1px solid ${col}44">${ic} ${s.name}</span>`;
+        }).join('')}
+      </div>
+    </div>`;
+  });
+  document.getElementById('rpt-daily-body').innerHTML=html||'<div style="color:var(--mu);text-align:center;padding:20px">لا توجد بيانات</div>';
+}
+
+function genMonthStats(){
+  const month = document.getElementById('rpt-month-sel').value;
+  const stus  = get('students',[]).filter(s=>!s.archived);
+  const grps  = get('groups',[]);
+  const allAtt= get(ATT_KEY,{});
+
+  const rows = stus.map(s=>{
+    const g = grps.find(x=>x.id===s.group);
+    let P=0,A=0,L=0;
+    Object.entries(allAtt).forEach(([sid,recs])=>{
+      if(!sid.startsWith(s.group+'||')) return;
+      if(!sid.split('||')[1]?.startsWith(month)) return;
+      const st=recs[s.id];
+      if(st==='present') P++;
+      else if(st==='absent') A++;
+      else if(st==='late') L++;
+    });
+    const total=P+A+L;
+    const pct=total?Math.round(P/total*100):0;
+    return {s,g,P,A,L,total,pct};
+  }).filter(r=>r.total>0).sort((a,b)=>b.pct-a.pct);
+
+  document.getElementById('rpt-month-body').innerHTML = rows.length ?
+    `<table style="width:100%;border-collapse:collapse;font-size:12px">
+      <thead><tr style="background:var(--bg)">
+        <th style="padding:7px;text-align:right;font-weight:700;color:var(--mu)">الطالب</th>
+        <th style="padding:7px;text-align:center;color:var(--ok)">✅</th>
+        <th style="padding:7px;text-align:center;color:var(--err)">❌</th>
+        <th style="padding:7px;text-align:center;color:var(--warn)">⏰</th>
+        <th style="padding:7px;text-align:center;color:var(--mu)">%</th>
+      </tr></thead><tbody>
+      ${rows.map(r=>`<tr style="border-bottom:1px solid var(--brd)">
+        <td style="padding:7px;font-weight:700">${r.s.name}<div style="font-size:10px;color:var(--mu)">${r.g?.name||''}</div></td>
+        <td style="text-align:center;font-weight:700;color:var(--ok)">${r.P}</td>
+        <td style="text-align:center;font-weight:700;color:var(--err)">${r.A}</td>
+        <td style="text-align:center;font-weight:700;color:var(--warn)">${r.L}</td>
+        <td style="text-align:center">
+          <div style="display:flex;align-items:center;gap:5px;justify-content:center">
+            <div style="width:40px;height:5px;background:var(--brd);border-radius:10px;overflow:hidden">
+              <div style="height:100%;width:${r.pct}%;background:${r.pct>=80?'var(--ok)':r.pct>=50?'var(--warn)':'var(--err)'}"></div>
+            </div>
+            <span style="font-weight:700;color:${r.pct>=80?'var(--ok)':r.pct>=50?'var(--warn)':'var(--err)'}">${r.pct}%</span>
+          </div>
+        </td>
+      </tr>`).join('')}
+      </tbody></table>` :
+    '<div style="text-align:center;padding:20px;color:var(--mu)">لا توجد بيانات</div>';
+}
+
+function genExpiryReport(){
+  const stus  = get('students',[]).filter(s=>!s.archived&&s.end);
+  const grps  = get('groups',[]);
+  const today = new Date();
+  const rows  = stus.map(s=>{
+    const g    = grps.find(x=>x.id===s.group);
+    const d    = Math.ceil((new Date(s.end)-today)/864e5);
+    return {...s,g,daysLeft:d};
+  }).sort((a,b)=>a.daysLeft-b.daysLeft);
+
+  const isPrivate = s => { const g=get('groups',[]).find(x=>x.id===s.group); return g?.type==='private'; };
+
+  document.getElementById('rpt-expiry-body').innerHTML = rows.map(s=>{
+    const exp  = s.daysLeft<0;
+    const crit = s.daysLeft>=0&&s.daysLeft<=3;
+    const warn = s.daysLeft>3&&s.daysLeft<=7;
+    const badge = exp?`<span class="bdg b-err">منتهي منذ ${Math.abs(s.daysLeft)}د</span>`
+      :crit?`<span class="bdg b-err">⚠ ${s.daysLeft}د</span>`
+      :warn?`<span class="bdg b-warn">⚠ ${s.daysLeft}د</span>`
+      :`<span class="bdg b-ok">${s.daysLeft}د</span>`;
+
+    const monthKey=today.toISOString().slice(0,7);
+    const allAtt=get(ATT_KEY,{});
+    let P=0,A=0;
+    Object.entries(allAtt).forEach(([sid,recs])=>{
+      if(!sid.startsWith(s.group+'||')) return;
+      if(!sid.split('||')[1]?.startsWith(monthKey)) return;
+      if(recs[s.id]==='present') P++;
+      else if(recs[s.id]==='absent') A++;
+    });
+    const pct=P+A?Math.round(P/(P+A)*100):0;
+
+    return `<tr style="${exp?'opacity:.6':''}">
+      <td style="font-weight:700">${s.name}<div style="font-size:10px;color:var(--mu)">${s.phone||''}</div></td>
+      <td><span class="bdg" style="background:${s.g?.color||'#ddd'}22;color:${s.g?.color||'#999'}">${s.g?.name||'—'}</span></td>
+      <td><span class="bdg ${isPrivate(s)?'b-pur':'b-info'}">${isPrivate(s)?'خصوصي':'مجموعة'}</span></td>
+      <td style="font-weight:700;color:${exp||crit?'var(--err)':warn?'var(--warn)':'var(--tx)'}">${s.end}</td>
+      <td>${badge}</td>
+      <td>—</td>
+      <td><span style="font-weight:700;color:${pct>=80?'var(--ok)':pct>=50?'var(--warn)':'var(--err)'}">${pct}%</span></td>
+      <td><button class="btn btn-xs btn-ok" onclick="renewStuAtt('${s.id}')">تجديد</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function renewStuAtt(stuId){
+  const stus=get('students',[]);
+  const i=stus.findIndex(s=>s.id===stuId);
+  if(i<0) return;
+  const base=stus[i].end?new Date(stus[i].end):new Date();
+  base.setMonth(base.getMonth()+1);
+  stus[i].end=base.toISOString().split('T')[0];
+  set('students',stus);
+  toast(`✓ تم تجديد ${stus[i].name} حتى ${stus[i].end}`);
+  genExpiryReport();
+}
+
+// ── Print ──
+function printAttSheet(grpId){
+  const grps=get('groups',[]);const stus=get('students',[]);
+  const g=grps.find(x=>x.id===grpId);
+  const recs=attGetRec(grpId,_attCurrentDate);
+  const gStus=stus.filter(s=>s.group===grpId&&!s.archived);
+  const w=window.open('','_blank');
+  w.document.write(`<html dir="rtl"><head><meta charset="UTF-8"><title>كشف حضور</title>
+  <style>body{font-family:Arial;direction:rtl;padding:20px;font-size:13px}h1{color:#0f172a;border-bottom:3px solid #f5a623;padding-bottom:8px}table{width:100%;border-collapse:collapse;margin-top:14px}th{background:#0f172a;color:#fff;padding:9px;text-align:right}td{padding:9px;border-bottom:1px solid #e2e8f0}.p{color:#059669}.a{color:#dc2626}.l{color:#d97706}@media print{button{display:none}}</style></head>
+  <body><h1>بالقلم — ${g?.name||''} | ${_attCurrentDate}</h1>
+  <p>✅ حاضر: ${gStus.filter(s=>recs[s.id]==='present').length} &nbsp; ❌ غائب: ${gStus.filter(s=>recs[s.id]==='absent').length} &nbsp; ⏰ متأخر: ${gStus.filter(s=>recs[s.id]==='late').length}</p>
+  <table><thead><tr><th>#</th><th>الاسم</th><th>الحضور</th><th>انتهاء الاشتراك</th><th>ملاحظة</th></tr></thead><tbody>
+  ${gStus.map((s,i)=>{const st=recs[s.id]||'—';const cls={present:'p',absent:'a',late:'l'}[st]||'';return`<tr><td>${i+1}</td><td>${s.name}</td><td class="${cls}">${{present:'✅ حاضر',absent:'❌ غائب',late:'⏰ متأخر'}[st]||'—'}</td><td>${s.end||'—'}</td><td></td></tr>`;}).join('')}
+  </tbody></table><br><button onclick="window.print()">🖨 طباعة</button></body></html>`);
+  w.document.close();
+}
+
+function printDailyReport(){ genDailyReport(); setTimeout(()=>window.print(),500); }
+function printExpiryReport(){ window.print(); }
+
+// ── Init ──
+function initAttendancePage(){
+  const dateEl = document.getElementById('att-date');
+  if(dateEl){ dateEl.value=_attCurrentDate; }
+  document.getElementById('att-day-label').textContent = dayLabel(_attCurrentDate);
+  renderAttGroups();
+}
+
+// ── Alerts integration ──
+const _origBuildAlerts2 = buildAlerts;
+buildAlerts = function(){
+  const base  = _origBuildAlerts2();
+  const stus  = get('students',[]).filter(s=>!s.archived&&s.end);
+  const today = new Date();
+  const expiring7 = stus.filter(s=>{ const d=Math.ceil((new Date(s.end)-today)/864e5); return d>=0&&d<=7; });
+  const expiring3 = stus.filter(s=>{ const d=Math.ceil((new Date(s.end)-today)/864e5); return d>=0&&d<=3; });
+  const expired   = stus.filter(s=>{ const d=Math.ceil((new Date(s.end)-today)/864e5); return d<0&&d>=-5; });
+  if(expiring3.length) base.push({t:'err',icon:'🔴',ttl:`${expiring3.length} طلاب ينتهي اشتراكهم خلال 3 أيام`,tx:expiring3.map(s=>s.name).join('، ')});
+  else if(expiring7.length) base.push({t:'warn',icon:'⏳',ttl:`${expiring7.length} طلاب ينتهي اشتراكهم خلال 7 أيام`,tx:expiring7.map(s=>s.name).join('، ')});
+  if(expired.length) base.push({t:'err',icon:'⛔',ttl:`${expired.length} طلاب انتهى اشتراكهم`,tx:expired.map(s=>s.name).join('، ')});
+  return base;
+};
+
+function setCompCount(n){ document.getElementById("comp-count").value=n; }
+
+function renderAttAllGroups(){
+  const grps = get('groups',[]).filter(g=>g.type!=='private');
+  if(!grps.length) return;
+  _attCurrentGrp = grps[0].id;
+  const tabsEl = document.getElementById('att-grp-tabs');
+  const wrapEl = document.getElementById('att-cards-wrap');
+  tabsEl.innerHTML = grps.map(g=>{
+    const recs  = attGetRec(g.id, _attCurrentDate);
+    const stus  = getActiveStudentsForGroup(g.id, _attCurrentDate);
+    const present = stus.filter(s=>recs[s.id]==='present').length;
+    const absent  = stus.filter(s=>recs[s.id]==='absent').length;
+    return `<div class="att-grp-tab ${_attCurrentGrp===g.id?'active':''}"
+                 style="${_attCurrentGrp===g.id?'background:'+g.color+';color:#fff':''}"
+                 onclick="selectAttGrp('${g.id}')">
+      <span>${g.name}</span>
+      <span style="font-size:11px;opacity:.8">✅${present} ❌${absent}</span>
+    </div>`;
+  }).join('');
+  renderAttCards(_attCurrentGrp);
+}
+
+function updateDaysField(){
+  const checks = document.querySelectorAll('#days-picker input[type=checkbox]');
+  const selected = Array.from(checks).filter(c=>c.checked).map(c=>c.value);
+  document.getElementById('gf-days').value = selected.join('، ');
+  // Update visual
+  document.querySelectorAll('#days-picker label').forEach(lbl=>{
+    const chk = lbl.querySelector('input');
+    if(chk.checked){
+      lbl.style.background='var(--accent)';
+      lbl.style.borderColor='var(--accent)';
+      lbl.style.color='#fff';
+    } else {
+      lbl.style.background='var(--card)';
+      lbl.style.borderColor='var(--brd)';
+      lbl.style.color='var(--mu)';
+    }
+  });
+}
+
+function loadDaysInPicker(daysStr){
+  const checks = document.querySelectorAll('#days-picker input[type=checkbox]');
+  const daysArr = daysStr ? daysStr.split(/[،,]/).map(x=>x.trim()) : [];
+  checks.forEach(chk=>{
+    chk.checked = daysArr.includes(chk.value);
+  });
+  updateDaysField();
 }
 
 </script>
