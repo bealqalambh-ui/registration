@@ -204,10 +204,19 @@ tr:hover td{background:var(--bg)}
 @media(max-width:768px){
   .sg{grid-template-columns:1fr 1fr}
   .g2,.g3{grid-template-columns:1fr}
-  .sb{position:fixed;right:-240px;top:0;height:100%;z-index:100;transition:.3s}
-  .sb.open{right:0}
+  .sb{position:fixed;right:-260px;top:0;height:100%;z-index:300;transition:.3s}
+  .sb.open{right:0;box-shadow:-6px 0 24px rgba(0,0,0,.4)}
   .ham{display:flex!important}
+  .main{margin-right:0!important}
+  .content{padding:12px}
+  .att-cards{grid-template-columns:repeat(auto-fill,minmax(120px,1fr))!important}
+  .pg-sub{display:none}
+  .tgl{display:none}
+  .sinp{width:130px!important}
 }
+/* Sidebar overlay */
+.sb-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:299;cursor:pointer}
+.sb-overlay.show{display:block}
 .ham{display:none;width:34px;height:34px;align-items:center;justify-content:center;border:1px solid var(--brd);border-radius:8px;background:var(--card);cursor:pointer;font-size:18px;color:var(--mu)}
 
 /* ── RECEIPT ── */
@@ -435,6 +444,24 @@ tr:hover td{background:var(--bg)}
       <div class="fg" id="sf-teacher-wrap">
         <label class="fl">المعلم/ة المسؤول/ة</label>
         <input id="sf-teacher" class="fi" placeholder="اسم المعلم/ة">
+      </div>
+
+      <!-- Private session settings -->
+      <div id="sf-private-sessions-wrap" style="display:none;background:var(--bg);border-radius:10px;padding:14px;border:1px solid var(--brd);margin-top:4px">
+        <div style="font-weight:800;font-size:13px;margin-bottom:10px;color:var(--accent)">📅 إعدادات الحصص الخصوصية</div>
+        <div class="fr">
+          <div class="fg" style="margin:0">
+            <label class="fl">عدد الحصص الشهرية</label>
+            <input type="number" id="sf-monthly-sessions" class="fi" placeholder="مثال: 8" min="1" max="30" oninput="updatePrivateEndPreview()">
+          </div>
+          <div class="fg" style="margin:0">
+            <label class="fl">إجمالي الحصص (اختياري)</label>
+            <input type="number" id="sf-total-sessions" class="fi" placeholder="اتركه فارغاً = شهر واحد" min="1" oninput="updatePrivateEndPreview()">
+          </div>
+        </div>
+        <div style="margin-top:10px;padding:10px 12px;background:var(--card);border-radius:8px;border:1px solid var(--brd);font-size:12px" id="sf-end-preview">
+          <span style="color:var(--mu)">حدد تاريخ البداية والأيام والحصص لحساب تاريخ الانتهاء تلقائياً</span>
+        </div>
       </div>
       <div class="fg"><label class="fl">ملاحظات</label><textarea id="sf-notes" class="fi" rows="2" placeholder="ملاحظات..."></textarea></div>
 
@@ -747,9 +774,73 @@ CREATE POLICY "allow_all" ON bealqalam_data
   </div>
 </div>
 
+
+<!-- MODAL: Add Holiday -->
+<div class="mo" id="mo-holiday">
+  <div class="mbox" style="max-width:480px">
+    <div class="mh"><div class="mt" id="holiday-mo-title">إضافة إجازة رسمية</div><button class="mc" onclick="closeMo('mo-holiday')">✕</button></div>
+    <div class="mb">
+      <div class="fg"><label class="fl">اسم الإجازة *</label><input id="hol-name" class="fi" placeholder="مثال: إجازة عيد الأضحى"></div>
+      <div class="fr">
+        <div class="fg"><label class="fl">تاريخ البداية *</label><input type="date" id="hol-start" class="fi"></div>
+        <div class="fg"><label class="fl">تاريخ النهاية *</label><input type="date" id="hol-end" class="fi"></div>
+      </div>
+      <div class="fg">
+        <label class="fl">تطبق على</label>
+        <div style="display:flex;gap:8px;margin-top:5px">
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:13px"><input type="radio" name="hol-scope" value="all" checked id="hol-all"> كل الطلاب</label>
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:13px"><input type="radio" name="hol-scope" value="groups" id="hol-groups"> المجموعات فقط</label>
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:13px"><input type="radio" name="hol-scope" value="private" id="hol-private"> الخصوصي فقط</label>
+        </div>
+      </div>
+      <div style="background:var(--info-l);border:1px solid rgba(59,130,246,.25);border-radius:9px;padding:10px 12px;font-size:12px;color:var(--info)" id="hol-preview">
+        سيتم حساب التمديد بعد اختيار التواريخ
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+        <button class="btn btn-gh btn-sm" onclick="closeMo('mo-holiday')">إلغاء</button>
+        <button class="btn btn-ac btn-sm" onclick="saveHoliday()">✓ حفظ وتطبيق</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Teacher Absence -->
+<div class="mo" id="mo-teacher-abs">
+  <div class="mbox" style="max-width:480px">
+    <div class="mh"><div class="mt">👩‍🏫 تسجيل غياب معلمة</div><button class="mc" onclick="closeMo('mo-teacher-abs')">✕</button></div>
+    <div class="mb">
+      <div class="fg">
+        <label class="fl">المجموعة المتأثرة *</label>
+        <select id="tabs-grp" class="fi"></select>
+      </div>
+      <div class="fg"><label class="fl">اسم المعلمة</label><input id="tabs-teacher" class="fi" placeholder="اسم المعلمة الغائبة"></div>
+      <div class="fr">
+        <div class="fg"><label class="fl">تاريخ الغياب *</label><input type="date" id="tabs-date" class="fi"></div>
+        <div class="fg"><label class="fl">عدد الحصص الفائتة</label><input type="number" id="tabs-sessions" class="fi" value="1" min="1" max="5"></div>
+      </div>
+      <div class="fg"><label class="fl">سبب الغياب</label><input id="tabs-reason" class="fi" placeholder="مثال: ظرف طارئ — مرض..."></div>
+      <div class="fg">
+        <label class="fl">طريقة التعويض</label>
+        <div style="display:flex;gap:8px;margin-top:5px;flex-wrap:wrap">
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:13px"><input type="radio" name="tabs-comp" value="extend" checked> تمديد تاريخ نهاية الاشتراك</label>
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:13px"><input type="radio" name="tabs-comp" value="session"> إضافة حصة تعويضية</label>
+        </div>
+      </div>
+      <div style="background:var(--warn-l);border:1px solid rgba(245,158,11,.3);border-radius:9px;padding:10px 12px;font-size:12px;color:var(--warn)" id="tabs-preview">
+        سيتم تمديد اشتراك طلاب المجموعة تلقائياً
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+        <button class="btn btn-gh btn-sm" onclick="closeMo('mo-teacher-abs')">إلغاء</button>
+        <button class="btn btn-ac btn-sm" onclick="saveTeacherAbs()">✓ حفظ وتعويض</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- APP -->
 <div id="app" style="display:none;width:100%;flex:1;min-height:100vh">
 
+<div class="sb-overlay" id="sb-overlay" onclick="closeSidebar()"></div>
 <aside class="sb" id="sb">
   <div class="sb-logo">
     <img src="data:image/png;base64,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" alt="بالقلم">
@@ -782,6 +873,9 @@ CREATE POLICY "allow_all" ON bealqalam_data
     <div class="ni" data-page="attendance">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>الحضور
     </div>
+    <div class="ni" data-page="holidays">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><circle cx="12" cy="16" r="2" fill="currentColor"/></svg>الإجازات
+    </div>
     <div class="ni" data-page="alerts">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>التنبيهات
       <span class="nb" id="alert-nb">0</span>
@@ -798,7 +892,7 @@ CREATE POLICY "allow_all" ON bealqalam_data
 
 <div class="main">
   <div class="topbar">
-    <div class="ham" onclick="document.getElementById('sb').classList.toggle('open')">☰</div>
+    <div class="ham" onclick="toggleSidebar()">☰</div>
     <div><div class="pg-ttl" id="pg-ttl">لوحة التحكم</div><div class="pg-sub" id="pg-sub">بالقلم — نظام الإدارة</div></div>
     <div class="tb-right">
       <div class="tgl">
@@ -1011,7 +1105,10 @@ CREATE POLICY "allow_all" ON bealqalam_data
 
       <!-- SECTION: GROUPS -->
       <div id="att-section-groups">
-        <!-- Group tabs -->
+        <!-- Holiday banner -->
+      <div id="att-holiday-banner" style="display:none;align-items:center;gap:12px;padding:12px 16px;background:var(--info-l);border:1px solid rgba(59,130,246,.3);border-radius:10px;margin-bottom:12px;color:var(--info)"></div>
+
+      <!-- Group tabs -->
         <div class="att-grp-tabs" id="att-grp-tabs"></div>
         <!-- Attendance cards -->
         <div id="att-cards-wrap"></div>
@@ -1072,6 +1169,31 @@ CREATE POLICY "allow_all" ON bealqalam_data
     </div>
 
     <!-- ALERTS -->
+
+    <!-- HOLIDAYS PAGE -->
+    <div class="page" id="page-holidays">
+      <div class="g2" style="margin-bottom:14px">
+        <div class="card">
+          <div class="ch">
+            <div><div class="ct">🏖 الإجازات الرسمية</div><div class="csub">تُمدد اشتراكات الطلاب تلقائياً</div></div>
+            <button class="btn btn-ac btn-sm" onclick="openHolidayMo()">+ إضافة إجازة</button>
+          </div>
+          <div class="cb" id="holidays-list" style="max-height:400px;overflow-y:auto"></div>
+        </div>
+        <div class="card">
+          <div class="ch">
+            <div><div class="ct">👩‍🏫 غياب المعلمات</div><div class="csub">تُمدد اشتراكات المجموعة تلقائياً</div></div>
+            <button class="btn btn-ac btn-sm" onclick="openTeacherAbsMo()">+ تسجيل غياب</button>
+          </div>
+          <div class="cb" id="teacher-abs-list" style="max-height:400px;overflow-y:auto"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="ch"><div class="ct">📊 ملخص التمديدات</div></div>
+        <div class="cb" id="holiday-impact"></div>
+      </div>
+    </div>
+
     <div class="page" id="page-alerts">
       <div style="max-width:680px" id="alrt-body"></div>
     </div>
@@ -1597,11 +1719,11 @@ function goPage(name){
   document.getElementById('page-'+name).classList.add('active');
   const el=document.querySelector('[data-page="'+name+'"]');
   if(el) el.classList.add('active');
-  const T={dashboard:['لوحة التحكم','ملخص الأداء'],students:['الطلاب','قائمة وإدارة الطلاب'],groups:['المجموعات','إدارة المجموعات التعليمية'],finance:['المالية الشهرية','الإيرادات حسب الشهر'],teachers:['المعلمون','إدارة المعلمين والجداول'],users:['المستخدمون','إدارة الصلاحيات والحسابات'],alerts:['التنبيهات','تنبيهات تحتاج انتباهك'],attendance:['الحضور والغياب','تسجيل ومتابعة الحضور']};
+  const T={dashboard:['لوحة التحكم','ملخص الأداء'],students:['الطلاب','قائمة وإدارة الطلاب'],groups:['المجموعات','إدارة المجموعات التعليمية'],finance:['المالية الشهرية','الإيرادات حسب الشهر'],teachers:['المعلمون','إدارة المعلمين والجداول'],users:['المستخدمون','إدارة الصلاحيات والحسابات'],alerts:['التنبيهات','تنبيهات تحتاج انتباهك'],attendance:['الحضور والغياب','تسجيل ومتابعة الحضور'],holidays:['الإجازات وغياب المعلمات','إدارة الإجازات والتعويضات']};
   const t=T[name]||['',''];
   document.getElementById('pg-ttl').textContent=t[0];
   document.getElementById('pg-sub').textContent=t[1];
-  ({dashboard:renderDashboard,students:renderStudents,groups:renderGroups,finance:renderFinance,teachers:renderTeachers,users:renderUsersPage,alerts:renderAlerts,attendance:initAttendancePage}[name]||function(){})();
+  ({dashboard:renderDashboard,students:renderStudents,groups:renderGroups,finance:renderFinance,teachers:renderTeachers,users:renderUsersPage,alerts:renderAlerts,attendance:initAttendancePage,holidays:initHolidaysPage}[name]||function(){})();
 }
 
 // ═══════════════════════════
@@ -1788,6 +1910,7 @@ function renderStudents(){
           <button class="btn btn-gh btn-xs" onclick="openStuMo('${s.id}')" title="تعديل البيانات">✏</button>
           <button class="btn btn-xs" style="background:rgba(16,185,129,.12);color:#10b981;border:1px solid rgba(16,185,129,.25)" onclick=\"event.stopPropagation();openRcpt('${s.id}')\" title="إيصال دفع">🧾</button>
           <button class="btn btn-xs" style="background:rgba(59,130,246,.12);color:#3b82f6;border:1px solid rgba(59,130,246,.25)" onclick="openMultiPay('${s.id}')" title="دفعات متعددة الأشهر">📅</button>
+          <button class="btn btn-xs" style="background:rgba(245,166,35,.15);color:#b45309;border:1px solid rgba(245,166,35,.35)" onclick="printStudentSchedule('${s.id}')" title="جدول الطالب PDF">🗓</button>
           <button class="btn btn-xs" style="background:rgba(139,92,246,.12);color:#8b5cf6;border:1px solid rgba(139,92,246,.25)" onclick="openMoveStu('${s.id}')" title="نقل لمجموعة أخرى">↗</button>
           <button class="btn btn-xs" style="background:rgba(239,68,68,.1);color:#ef4444;border:1px solid rgba(239,68,68,.25)" onclick="archiveStu('${s.id}','${s.name.replace(/'/g,"\'")}',this)" title="حذف / أرشفة">🗑</button>
         </div>
@@ -1823,8 +1946,10 @@ function openStuMo(id){
     document.getElementById('sf-grpa').value=s.grp_add?'1':'0';
     document.getElementById('sf-notes').value=s.notes||'';
     if(document.getElementById('sf-teacher')) document.getElementById('sf-teacher').value=s.teacher||'';
+    if(document.getElementById('sf-monthly-sessions')) document.getElementById('sf-monthly-sessions').value=s.monthlySessionCount||'';
+    if(document.getElementById('sf-total-sessions')) document.getElementById('sf-total-sessions').value=s.totalSessions||'';
   } else {
-    ['sf-name','sf-phone','sf-cls','sf-fee','sf-notes','sf-start','sf-end'].forEach(x=>document.getElementById(x).value='');
+    ['sf-name','sf-phone','sf-cls','sf-fee','sf-notes','sf-start','sf-end','sf-monthly-sessions','sf-total-sessions'].forEach(x=>{const el=document.getElementById(x);if(el)el.value='';});
     document.getElementById('sf-sched').value='0';
     document.getElementById('sf-grpa').value='0';
   }
@@ -1847,7 +1972,16 @@ function saveStu(){
     sched:document.getElementById('sf-sched').value==='1',grp_add:document.getElementById('sf-grpa').value==='1',
     notes:document.getElementById('sf-notes').value,
     teacher:document.getElementById('sf-teacher')?.value||'',
+    monthlySessionCount: Number(document.getElementById('sf-monthly-sessions')?.value)||0,
+    totalSessions: Number(document.getElementById('sf-total-sessions')?.value)||0,
     prvSched: prvSchedData};
+
+  // Auto-calculate end date for private students
+  if(obj.prvSched && obj.start && obj.monthlySessionCount){
+    const total = obj.totalSessions || obj.monthlySessionCount;
+    const computed = calcPrivateEndDate(obj.start, total, obj.prvSched, true);
+    if(computed) obj.end = computed;
+  }
   if(editStuId){
     const i=stus.findIndex(s=>s.id===editStuId);
     if(i>=0) stus[i]={...stus[i],...obj};
@@ -2734,40 +2868,93 @@ function printSched(){
 // ARCHIVE / MOVE STUDENT
 // ═══════════════════════════════════════════
 function archiveStu(id, name, btn){
-  // Show choice popup near button
   const existing=document.getElementById('arch-popup');
   if(existing) existing.remove();
 
   const popup=document.createElement('div');
   popup.id='arch-popup';
-  popup.style.cssText='position:fixed;z-index:2000;background:var(--card);border:1px solid var(--brd);border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.2);padding:14px;min-width:220px;direction:rtl;font-family:Cairo,sans-serif';
+  // Mobile-friendly: center on small screens
+  const isMobile = window.innerWidth <= 600;
+  popup.style.cssText = isMobile
+    ? 'position:fixed;z-index:3000;background:var(--card);border:1px solid var(--brd);border-radius:16px 16px 0 0;box-shadow:0 -4px 30px rgba(0,0,0,.25);padding:18px;width:100%;left:0;bottom:0;direction:rtl;font-family:Cairo,sans-serif'
+    : 'position:fixed;z-index:3000;background:var(--card);border:1px solid var(--brd);border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.2);padding:14px;min-width:240px;direction:rtl;font-family:Cairo,sans-serif';
+
+  if(!isMobile){
+    const rect=btn.getBoundingClientRect();
+    popup.style.top=(Math.min(rect.bottom+6, window.innerHeight-280))+'px';
+    popup.style.right=(window.innerWidth-rect.right)+'px';
+  }
+
   popup.innerHTML=`
-    <div style="font-weight:800;font-size:13px;margin-bottom:10px;color:var(--tx)">ماذا تريد بـ <span style="color:var(--accent)">${name}</span>؟</div>
-    <button class="btn btn-xs" style="width:100%;justify-content:flex-start;margin-bottom:6px;background:var(--err-l,rgba(239,68,68,.1));color:var(--err);border:1px solid rgba(239,68,68,.2)" onclick="confirmArchive('${id}','${name}');this.closest('#arch-popup').remove()">
-      🗑 حذف من القائمة (انتهى اشتراكه)
+    <div style="font-weight:800;font-size:14px;margin-bottom:12px;color:var(--tx)">
+      ماذا تريد بـ <span style="color:var(--accent)">${name}</span>؟
+    </div>
+    <button class="btn btn-xs" style="width:100%;justify-content:flex-start;margin-bottom:8px;padding:10px 12px;font-size:13px;background:rgba(239,68,68,.1);color:var(--err);border:1px solid rgba(239,68,68,.25)"
+      onclick="deleteStuPermanent('${id}','${name}');document.getElementById('arch-popup').remove()">
+      🗑 حذف نهائي من النظام
     </button>
-    <button class="btn btn-xs" style="width:100%;justify-content:flex-start;margin-bottom:6px;background:var(--warn-l,rgba(245,158,11,.1));color:var(--warn);border:1px solid rgba(245,158,11,.2)" onclick="freezeStu('${id}','${name}');this.closest('#arch-popup').remove()">
-      ❄ تجميد (مؤقت — سيعود لاحقاً)
+    <button class="btn btn-xs" style="width:100%;justify-content:flex-start;margin-bottom:8px;padding:10px 12px;font-size:13px;background:rgba(100,116,139,.1);color:var(--mu);border:1px solid rgba(100,116,139,.2)"
+      onclick="confirmArchive('${id}','${name}');document.getElementById('arch-popup').remove()">
+      📦 أرشفة (يبقى في السجل)
     </button>
-    <button class="btn btn-xs" style="width:100%;justify-content:flex-start;background:var(--pur-l,rgba(139,92,246,.1));color:var(--pur);border:1px solid rgba(139,92,246,.2)" onclick="openMoveStu('${id}');this.closest('#arch-popup').remove()">
+    <button class="btn btn-xs" style="width:100%;justify-content:flex-start;margin-bottom:8px;padding:10px 12px;font-size:13px;background:rgba(245,158,11,.1);color:var(--warn);border:1px solid rgba(245,158,11,.25)"
+      onclick="freezeStu('${id}','${name}');document.getElementById('arch-popup').remove()">
+      ❄ تجميد مؤقت
+    </button>
+    <button class="btn btn-xs" style="width:100%;justify-content:flex-start;margin-bottom:8px;padding:10px 12px;font-size:13px;background:rgba(139,92,246,.1);color:var(--pur);border:1px solid rgba(139,92,246,.25)"
+      onclick="openMoveStu('${id}');document.getElementById('arch-popup').remove()">
       ↗ نقل لمجموعة أخرى
     </button>
-    <div style="border-top:1px solid var(--brd);margin-top:10px;padding-top:8px">
-      <button class="btn btn-xs btn-gh" style="width:100%" onclick="this.closest('#arch-popup').remove()">إلغاء</button>
-    </div>`;
+    <button class="btn btn-gh btn-xs" style="width:100%;padding:9px;font-size:13px;margin-top:4px"
+      onclick="document.getElementById('arch-popup').remove()">إلغاء</button>`;
 
-  // Position near button
-  const rect=btn.getBoundingClientRect();
-  popup.style.top=(rect.bottom+6)+'px';
-  popup.style.right=(window.innerWidth-rect.right)+'px';
   document.body.appendChild(popup);
 
-  // Close on outside click
-  setTimeout(()=>{
-    document.addEventListener('click', function h(e){
-      if(!popup.contains(e.target)&&e.target!==btn){ popup.remove(); document.removeEventListener('click',h); }
-    });
-  },100);
+  // Add backdrop for mobile
+  if(isMobile){
+    const bd=document.createElement('div');
+    bd.id='arch-backdrop';
+    bd.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:2999';
+    bd.onclick=()=>{ popup.remove(); bd.remove(); };
+    document.body.insertBefore(bd, popup);
+  } else {
+    setTimeout(()=>{
+      document.addEventListener('click', function h(e){
+        if(!popup.contains(e.target)&&e.target!==btn){
+          popup.remove(); document.removeEventListener('click',h);
+        }
+      });
+    },100);
+  }
+}
+
+function deleteStuPermanent(id, name){
+  if(!confirm(`هل أنت متأكد من الحذف النهائي لـ "${name}"؟
+لا يمكن التراجع عن هذا الإجراء.`)) return;
+  const stus = get('students', []);
+  set('students', stus.filter(s=>s.id!==id));
+  // Clean up pays and comp
+  const pays = get('pays',{}); delete pays[id]; set('pays', pays);
+  const comp = get(COMP_KEY,{}); delete comp[id]; set(COMP_KEY, comp);
+  const amts = get('payAmounts',{}); delete amts[id]; set('payAmounts', amts);
+  addAct('تم حذف الطالب: '+name, '#ef4444');
+  toast('تم الحذف النهائي', 'err');
+  updateBadge();
+  renderStudents();
+}
+
+function deleteStuPermanent(id, name){
+  if(!confirm('هل أنت متأكد من الحذف النهائي لـ "'+name+'"؟\nلا يمكن التراجع!')) return;
+  let stus = get('students',[]);
+  stus = stus.filter(s=>s.id!==id);
+  set('students', stus);
+  // Clean payments
+  const pays=get('pays',{}); delete pays[id]; set('pays',pays);
+  const amts=get('payAmounts',{}); delete amts[id]; set('payAmounts',amts);
+  const comp=get(COMP_KEY,{}); if(comp){delete comp[id];set(COMP_KEY,comp);}
+  addAct('تم حذف الطالب نهائياً: '+name,'#ef4444');
+  toast('تم الحذف النهائي','err');
+  updateBadge(); renderStudents();
 }
 
 function confirmArchive(id, name){
@@ -2780,8 +2967,7 @@ function confirmArchive(id, name){
   set('students',stus);
   addAct('تم أرشفة الطالب: '+name,'#ef4444');
   toast('تم أرشفة '+name);
-  renderStudents();
-  updateBadge();
+  renderStudents(); updateBadge();
 }
 
 function freezeStu(id, name){
@@ -2852,12 +3038,44 @@ function _isPrvGroup(grpId){
 }
 
 function _checkPrvSection(){
-  const grpId = document.getElementById('sf-grp').value;
-  const sec = document.getElementById('prv-sched-section');
-  if(sec) sec.style.display = _isPrvGroup(grpId) ? 'block' : 'none';
-  // Show teacher field for private students
+  const grpId  = document.getElementById('sf-grp').value;
+  const isPrv  = _isPrvGroup(grpId);
+  const sec    = document.getElementById('prv-sched-section');
+  if(sec) sec.style.display = isPrv ? 'block' : 'none';
   const tchrWrap = document.getElementById('sf-teacher-wrap');
-  if(tchrWrap) tchrWrap.style.display = _isPrvGroup(grpId) ? 'block' : 'none';
+  if(tchrWrap) tchrWrap.style.display = isPrv ? 'block' : 'none';
+  const sessWrap = document.getElementById('sf-private-sessions-wrap');
+  if(sessWrap) sessWrap.style.display = isPrv ? 'block' : 'none';
+  if(isPrv) updatePrivateEndPreview();
+}
+
+function updatePrivateEndPreview(){
+  const startVal   = document.getElementById('sf-start')?.value;
+  const monthly    = Number(document.getElementById('sf-monthly-sessions')?.value)||0;
+  const totalInput = Number(document.getElementById('sf-total-sessions')?.value)||0;
+  const prvSched   = _prvDays || {};
+  const el         = document.getElementById('sf-end-preview');
+  if(!el) return;
+
+  if(!startVal || !monthly || !Object.keys(prvSched).length){
+    el.innerHTML = '<span style="color:var(--mu)">حدد تاريخ البداية والأيام وعدد الحصص لحساب الانتهاء</span>';
+    return;
+  }
+
+  const total   = totalInput || monthly;
+  const endDate = calcPrivateEndDate(startVal, total, prvSched, true);
+  const daysLbl = Object.keys(prvSched).map(k=>DAY_AR[Number(k)]).join(' + ');
+
+  if(endDate){
+    // Also update the end date field
+    const endEl = document.getElementById('sf-end');
+    if(endEl) endEl.value = endDate;
+    el.innerHTML = `✅ تاريخ الانتهاء: <strong>${endDate}</strong><br>
+      <span style="color:var(--mu)">${total} حصة × (${daysLbl}) من ${startVal}</span>`;
+    el.style.color = 'var(--ok)';
+  } else {
+    el.innerHTML = '<span style="color:var(--mu)">تعذر الحساب</span>';
+  }
 }
 
 function togglePrvDay(el){
@@ -2870,6 +3088,7 @@ function togglePrvDay(el){
     _prvDays[day] = _prvDays[day] || '';
   }
   _renderPrvSlots();
+  updatePrivateEndPreview();
 }
 
 function _renderPrvSlots(){
@@ -2937,6 +3156,8 @@ function _initPrvSchedForModal(id){
     _checkPrvSection();
     const grpSel = document.getElementById('sf-grp');
     if(grpSel) grpSel.onchange = _checkPrvSection;
+    const startEl = document.getElementById('sf-start');
+    if(startEl) startEl.oninput = ()=>{ _checkPrvSection(); updatePrivateEndPreview(); };
   }, 60);
 }
 
@@ -3062,6 +3283,18 @@ function renderAttGroups(){
         </div>
       </div>`;
     return;
+  }
+
+  // ── Check if today is a holiday ──
+  const todayHol = getHolidayForDate(_attCurrentDate);
+  const holBanner = document.getElementById('att-holiday-banner');
+  if(holBanner){
+    if(todayHol){
+      holBanner.style.display='flex';
+      holBanner.innerHTML=`<span style="font-size:20px">🏖</span><div><div style="font-weight:800;font-size:13px">اليوم إجازة رسمية: ${todayHol.name}</div><div style="font-size:11px;opacity:.8">${todayHol.start} ← ${todayHol.end} | ${todayHol.days} أيام</div></div>`;
+    } else {
+      holBanner.style.display='none';
+    }
   }
 
   // Set first group if none selected or selected not in today's groups
@@ -3374,7 +3607,14 @@ function renderAttPrivate(filter=''){
           ${isExp?'<span style="font-size:10px;color:var(--err)"> ⛔ انتهت الحصص</span>':''}
           ${isWarn?`<span style="font-size:10px;color:var(--warn)"> ⚠ ${remain} حصة متبقية</span>`:''}
         </div>
-        <div class="att-prv-sub">${g?.name||''} | ${usedCount}/${total} حصة (${pct}%)</div>
+        <div class="att-prv-sub">
+          ${g?.name||''} &nbsp;|&nbsp;
+          استخدم ${usedCount}/${total} حصة &nbsp;|&nbsp;
+          <span style="color:${remain<=2?'var(--err)':remain<=4?'var(--warn)':'var(--ok)'}">
+            متبقي ${remain} حصة
+          </span>
+          ${s.end?` | ينتهي ${s.end}`:''}
+        </div>
         <div class="att-prv-sessions">${pips}</div>
       </div>
       <div class="att-prv-btns">
@@ -3384,6 +3624,7 @@ function renderAttPrivate(filter=''){
         <div class="att-prv-btn ${rec==='absent'?'a-active':''}"
              onclick="attPrvTap('${s.id}','absent',event)"
              title="غائب">❌</div>
+        <div class="att-prv-btn" onclick="printStudentSchedule('${s.id}')" title="جدول الطالب" style="font-size:14px">🗓</div>
       </div>
     </div>`;
   }).join('');
@@ -3697,6 +3938,909 @@ function loadDaysInPicker(daysStr){
   });
   updateDaysField();
 }
+
+
+// ══════════════════════════════════════════════════════
+// HOLIDAYS & TEACHER ABSENCE SYSTEM
+// ══════════════════════════════════════════════════════
+const HOL_KEY  = 'holidays';
+const TABS_KEY = 'teacher_abs';
+
+// ── Helpers ──
+function countDays(startStr, endStr){
+  const s = new Date(startStr), e = new Date(endStr);
+  return Math.max(0, Math.ceil((e - s) / 864e5) + 1);
+}
+
+function addDaysToDate(dateStr, days){
+  const d = new Date(dateStr);
+  d.setDate(d.getDate() + days);
+  return d.toISOString().split('T')[0];
+}
+
+function isHolidayDay(dateStr){
+  const hols = get(HOL_KEY, []);
+  return hols.some(h => dateStr >= h.start && dateStr <= h.end);
+}
+
+// ── Page init ──
+function initHolidaysPage(){
+  renderHolidaysList();
+  renderTeacherAbsList();
+  renderHolidayImpact();
+  // Fill group select
+  const grpSel = document.getElementById('tabs-grp');
+  if(grpSel){
+    const grps = get('groups', []);
+    grpSel.innerHTML = grps.map(g=>`<option value="${g.id}">${g.name}</option>`).join('');
+  }
+  // Set today as default date
+  const td = new Date().toISOString().split('T')[0];
+  ['hol-start','hol-end','tabs-date'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el && !el.value) el.value = td;
+  });
+}
+
+// ══ OFFICIAL HOLIDAYS ══
+function openHolidayMo(id){
+  const hols = get(HOL_KEY, []);
+  const h = id ? hols.find(x=>x.id===id) : null;
+  document.getElementById('holiday-mo-title').textContent = id ? 'تعديل الإجازة' : 'إضافة إجازة رسمية';
+  document.getElementById('hol-name').value  = h?.name  || '';
+  document.getElementById('hol-start').value = h?.start || new Date().toISOString().split('T')[0];
+  document.getElementById('hol-end').value   = h?.end   || new Date().toISOString().split('T')[0];
+  const scope = h?.scope || 'all';
+  document.querySelector(`input[name="hol-scope"][value="${scope}"]`).checked = true;
+  document.getElementById('mo-holiday').classList.add('open');
+  updateHolPreview();
+  // Watch date changes
+  ['hol-start','hol-end'].forEach(id=>{
+    document.getElementById(id).oninput = updateHolPreview;
+  });
+}
+
+function updateHolPreview(){
+  const start = document.getElementById('hol-start').value;
+  const end   = document.getElementById('hol-end').value;
+  if(!start || !end) return;
+  const days = countDays(start, end);
+  const stus = get('students', []).filter(s=>!s.archived&&s.end);
+  const el   = document.getElementById('hol-preview');
+  if(el) el.innerHTML = `📅 عدد أيام الإجازة: <strong>${days} يوم</strong><br>
+    سيتم تمديد اشتراك <strong>${stus.length} طالب</strong> بمقدار ${days} يوم تلقائياً`;
+}
+
+function saveHoliday(){
+  const name  = document.getElementById('hol-name').value.trim();
+  const start = document.getElementById('hol-start').value;
+  const end   = document.getElementById('hol-end').value;
+  const scope = document.querySelector('input[name="hol-scope"]:checked')?.value || 'all';
+  if(!name || !start || !end){ toast('أدخل اسم الإجازة والتواريخ', 'err'); return; }
+  if(start > end){ toast('تاريخ البداية يجب أن يكون قبل النهاية', 'err'); return; }
+
+  const days = countDays(start, end);
+  const hols = get(HOL_KEY, []);
+  const newHol = {
+    id: 'hol_' + Date.now(),
+    name, start, end, scope, days,
+    appliedAt: new Date().toISOString()
+  };
+  hols.push(newHol);
+  set(HOL_KEY, hols);
+
+  // ── Extend student subscriptions ──
+  const stus = get('students', []);
+  const grps = get('groups', []);
+  let extCount = 0;
+
+  stus.forEach((s, i) => {
+    if(s.archived) return;
+    const g = grps.find(x=>x.id===s.group);
+    // Check scope
+    if(scope === 'groups'  && g?.type === 'private') return;
+    if(scope === 'private' && g?.type !== 'private') return;
+
+    if(g?.type === 'private'){
+      // Private: count how many scheduled sessions fall on holiday dates
+      // Then recalculate end date
+      if(!s.prvSched || !s.start || !s.monthlySessionCount) return;
+      const scheduledDays = Object.keys(s.prvSched).map(Number);
+      let holSessions = 0;
+      // Count sessions that fall within the holiday
+      const holStart = new Date(start), holEnd = new Date(end);
+      const cur2 = new Date(holStart);
+      while(cur2 <= holEnd){
+        if(scheduledDays.includes(cur2.getDay())) holSessions++;
+        cur2.setDate(cur2.getDate()+1);
+      }
+      if(holSessions > 0){
+        // Add those sessions to total
+        stus[i].totalSessions = (s.totalSessions || s.monthlySessionCount || 8) + holSessions;
+        // Recalculate end date
+        const total = stus[i].totalSessions;
+        const newEnd = calcPrivateEndDate(s.start, total, s.prvSched, true);
+        if(newEnd) stus[i].end = newEnd;
+        extCount++;
+      }
+    } else {
+      // Group: NO extension — holiday sessions are simply removed from schedule
+      // The printed schedule already skips holiday days automatically
+      extCount++;
+    }
+  });
+  set('students', stus);
+
+  // ── Mark attendance days as holiday ──
+  // No attendance should be recorded on holiday days
+  // We just store the holiday — attendance page checks it
+
+  addAct(`تم إضافة إجازة "${name}" (${days} أيام) — مُدّد ${extCount} اشتراك`, '#3b82f6');
+  toast(`✓ تم حفظ الإجازة وتمديد ${extCount} اشتراك`);
+  closeMo('mo-holiday');
+  renderHolidaysList();
+  renderHolidayImpact();
+}
+
+function deleteHoliday(id){
+  if(!confirm('هل تريد حذف هذه الإجازة؟ لن يتم التراجع عن التمديد.')) return;
+  const hols = get(HOL_KEY, []);
+  set(HOL_KEY, hols.filter(h=>h.id!==id));
+  toast('تم حذف الإجازة', 'err');
+  renderHolidaysList();
+}
+
+function renderHolidaysList(){
+  const hols = get(HOL_KEY, []).sort((a,b)=>b.start.localeCompare(a.start));
+  const el   = document.getElementById('holidays-list');
+  if(!el) return;
+  el.innerHTML = hols.length ? hols.map(h=>`
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--brd)">
+      <div style="width:36px;height:36px;border-radius:9px;background:var(--info-l);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">🏖</div>
+      <div style="flex:1">
+        <div style="font-weight:800;font-size:13px">${h.name}</div>
+        <div style="font-size:11px;color:var(--mu);margin-top:2px">
+          ${h.start} ← ${h.end} &nbsp;|&nbsp; ${h.days} يوم &nbsp;|&nbsp;
+          <span class="bdg b-info">${{all:'الكل',groups:'مجموعات',private:'خصوصي'}[h.scope]||'الكل'}</span>
+        </div>
+      </div>
+      <div style="display:flex;gap:5px">
+        <button class="btn btn-xs btn-gh" onclick="openHolidayMo('${h.id}')">✏</button>
+        <button class="btn btn-xs" style="background:transparent;border:1px solid var(--err);color:var(--err)" onclick="deleteHoliday('${h.id}')">🗑</button>
+      </div>
+    </div>`).join('') :
+    '<div style="color:var(--mu);text-align:center;padding:20px;font-size:13px">لا توجد إجازات مسجلة</div>';
+}
+
+// ══ TEACHER ABSENCES ══
+function openTeacherAbsMo(){
+  const grps = get('groups', []);
+  const gsel = document.getElementById('tabs-grp');
+  if(gsel) gsel.innerHTML = grps.map(g=>`<option value="${g.id}">${g.name}</option>`).join('');
+  document.getElementById('tabs-teacher').value = '';
+  document.getElementById('tabs-date').value    = new Date().toISOString().split('T')[0];
+  document.getElementById('tabs-sessions').value= '1';
+  document.getElementById('tabs-reason').value  = '';
+  document.getElementById('mo-teacher-abs').classList.add('open');
+  updateTabsPreview();
+  document.getElementById('tabs-grp').onchange      = updateTabsPreview;
+  document.getElementById('tabs-sessions').oninput  = updateTabsPreview;
+}
+
+function updateTabsPreview(){
+  const grpId    = document.getElementById('tabs-grp')?.value;
+  const sessions = Number(document.getElementById('tabs-sessions')?.value)||1;
+  const grps     = get('groups', []);
+  const stus     = get('students', []);
+  const grp      = grps.find(g=>g.id===grpId);
+  const grpStus  = stus.filter(s=>s.group===grpId&&!s.archived);
+  const el = document.getElementById('tabs-preview');
+  if(!el) return;
+  if(grp?.type === 'private'){
+    el.innerHTML = `👤 خصوصي — ${grpStus.length} طالب<br>سيتم إضافة <strong>${sessions} حصة</strong> لكل طالب وإعادة حساب تاريخ الانتهاء`;
+  } else {
+    const daysPerSess = getDaysPerSession(grp);
+    const totalDays   = sessions * daysPerSess;
+    el.innerHTML = `👩‍🏫 ${grp?.name||''}: <strong>${grpStus.length} طالب</strong><br>
+    سيتم تمديد اشتراكهم بمقدار <strong>${totalDays} يوم</strong> (${sessions} حصة × ${daysPerSess} يوم/حصة)`;
+  }
+}
+
+function saveTeacherAbs(){
+  const grpId    = document.getElementById('tabs-grp').value;
+  const teacher  = document.getElementById('tabs-teacher').value.trim();
+  const date     = document.getElementById('tabs-date').value;
+  const sessions = Number(document.getElementById('tabs-sessions').value)||1;
+  const reason   = document.getElementById('tabs-reason').value.trim();
+  const compType = document.querySelector('input[name="tabs-comp"]:checked')?.value || 'extend';
+
+  if(!grpId || !date){ toast('اختر المجموعة والتاريخ', 'err'); return; }
+
+  const grps = get('groups', []);
+  const grp  = grps.find(g=>g.id===grpId);
+  const stus = get('students', []);
+  const daysPerSess = getDaysPerSession(grp);
+  const totalDays   = sessions * daysPerSess;
+  let extCount = 0;
+
+  // Save record
+  const abs = get(TABS_KEY, []);
+  abs.push({
+    id: 'tabs_' + Date.now(),
+    grpId, grpName: grp?.name||'',
+    teacher, date, sessions, reason, compType,
+    daysAdded: compType === 'extend' ? totalDays : 0,
+    createdAt: new Date().toISOString()
+  });
+  set(TABS_KEY, abs);
+
+  if(compType === 'extend'){
+    stus.forEach((s, i) => {
+      if(s.group !== grpId || s.archived) return;
+      const g2 = grps.find(x=>x.id===grpId);
+      if(g2?.type === 'private'){
+        // Private: add sessions and recalculate end
+        if(!s.prvSched || !s.start || !s.monthlySessionCount) return;
+        stus[i].totalSessions = (s.totalSessions || s.monthlySessionCount || 8) + sessions;
+        const newEnd = calcPrivateEndDate(s.start, stus[i].totalSessions, s.prvSched, true);
+        if(newEnd){ stus[i].end = newEnd; extCount++; }
+      } else {
+        // Group: extend by days
+        if(!s.end || s.end < date) return;
+        stus[i].end = addDaysToDate(s.end, totalDays);
+        extCount++;
+      }
+    });
+    set('students', stus);
+    toast(`✓ تم تمديد ${extCount} اشتراك`);
+  } else {
+    // Add compensatory sessions to each student
+    const comp = get(COMP_KEY, {});
+    stus.filter(s=>s.group===grpId&&!s.archived).forEach(s=>{
+      if(!comp[s.id]) comp[s.id]=[];
+      comp[s.id].push({date, count: sessions, reason: `غياب المعلمة: ${teacher||''}`, addedAt: new Date().toISOString()});
+      extCount++;
+    });
+    set(COMP_KEY, comp);
+    toast(`✓ تم إضافة ${sessions} حصة تعويضية لـ ${extCount} طالب`);
+  }
+
+  addAct(`غياب معلمة ${teacher||''} — ${grp?.name||''} — ${sessions} حصة`, '#f59e0b');
+  closeMo('mo-teacher-abs');
+  renderTeacherAbsList();
+  renderHolidayImpact();
+}
+
+function deleteTeacherAbs(id){
+  if(!confirm('حذف هذا السجل؟ لن يتم التراجع عن التمديد.')) return;
+  set(TABS_KEY, get(TABS_KEY,[]).filter(x=>x.id!==id));
+  toast('تم الحذف', 'err');
+  renderTeacherAbsList();
+}
+
+function renderTeacherAbsList(){
+  const abs = get(TABS_KEY, []).sort((a,b)=>b.date.localeCompare(a.date));
+  const el  = document.getElementById('teacher-abs-list');
+  if(!el) return;
+  el.innerHTML = abs.length ? abs.map(a=>`
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--brd)">
+      <div style="width:36px;height:36px;border-radius:9px;background:var(--warn-l);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">👩‍🏫</div>
+      <div style="flex:1">
+        <div style="font-weight:800;font-size:13px">${a.grpName} ${a.teacher?'— '+a.teacher:''}</div>
+        <div style="font-size:11px;color:var(--mu);margin-top:2px">
+          ${a.date} &nbsp;|&nbsp; ${a.sessions} حصة &nbsp;|&nbsp;
+          ${a.compType==='extend'?`تمديد ${a.daysAdded} يوم`:'حصة تعويضية'}
+          ${a.reason?'&nbsp;|&nbsp; '+a.reason:''}
+        </div>
+      </div>
+      <button class="btn btn-xs" style="background:transparent;border:1px solid var(--err);color:var(--err)" onclick="deleteTeacherAbs('${a.id}')">🗑</button>
+    </div>`).join('') :
+    '<div style="color:var(--mu);text-align:center;padding:20px;font-size:13px">لا توجد سجلات غياب</div>';
+}
+
+function renderHolidayImpact(){
+  const hols = get(HOL_KEY, []);
+  const abs  = get(TABS_KEY, []);
+  const el   = document.getElementById('holiday-impact');
+  if(!el) return;
+
+  const totalHolDays = hols.reduce((s,h)=>s+h.days, 0);
+  const totalAbsDays = abs.reduce((s,a)=>s+(a.daysAdded||0), 0);
+
+  el.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:14px">
+      <div style="text-align:center;padding:14px;background:var(--info-l);border-radius:10px;border:1px solid rgba(59,130,246,.2)">
+        <div style="font-size:26px;font-weight:900;color:var(--info)">${hols.length}</div>
+        <div style="font-size:12px;color:var(--mu)">إجازة رسمية</div>
+        <div style="font-size:11px;color:var(--info);margin-top:3px">${totalHolDays} يوم إجمالاً</div>
+      </div>
+      <div style="text-align:center;padding:14px;background:var(--warn-l);border-radius:10px;border:1px solid rgba(245,158,11,.2)">
+        <div style="font-size:26px;font-weight:900;color:var(--warn)">${abs.length}</div>
+        <div style="font-size:12px;color:var(--mu)">غياب معلمة</div>
+        <div style="font-size:11px;color:var(--warn);margin-top:3px">${abs.reduce((s,a)=>s+a.sessions,0)} حصة فائتة</div>
+      </div>
+      <div style="text-align:center;padding:14px;background:var(--ok-l);border-radius:10px;border:1px solid rgba(16,185,129,.2)">
+        <div style="font-size:26px;font-weight:900;color:var(--ok)">${totalHolDays+totalAbsDays}</div>
+        <div style="font-size:12px;color:var(--mu)">يوم تمديد إجمالي</div>
+      </div>
+    </div>
+    ${hols.length||abs.length ? `
+    <div style="font-size:12px;color:var(--mu);background:var(--bg);border-radius:9px;padding:12px;border:1px solid var(--brd)">
+      <div style="font-weight:700;margin-bottom:6px">آخر 5 تغييرات:</div>
+      ${[...hols.map(h=>({date:h.start,text:`🏖 ${h.name} — ${h.days} يوم`,color:'var(--info)'})),
+         ...abs.map(a=>({date:a.date,text:`👩‍🏫 غياب ${a.grpName} — ${a.sessions} حصة`,color:'var(--warn)'}))
+        ].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,5)
+        .map(x=>`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--brd)">
+          <span style="color:${x.color};font-size:12px">${x.date}</span>
+          <span style="font-size:12px">${x.text}</span>
+        </div>`).join('')}
+    </div>` : ''}`;
+}
+
+// ── Attendance: show holiday banner ──
+function getHolidayForDate(dateStr){
+  const hols = get(HOL_KEY, []);
+  return hols.find(h => dateStr >= h.start && dateStr <= h.end) || null;
+}
+
+
+// ══════════════════════════════════════════════════════
+// PRIVATE SESSION-BASED END DATE CALCULATOR
+// ══════════════════════════════════════════════════════
+
+/**
+ * Calculate end date for private student
+ * @param {string} startDate - YYYY-MM-DD
+ * @param {number} totalSessions - number of sessions
+ * @param {object} prvSched - {dayIndex: timeString}
+ * @param {boolean} skipHolidays - whether to skip official holidays
+ * @returns {string} end date YYYY-MM-DD
+ */
+function calcPrivateEndDate(startDate, totalSessions, prvSched, skipHolidays=true){
+  if(!startDate || !totalSessions || !prvSched) return '';
+  const scheduledDays = Object.keys(prvSched).map(Number);
+  if(!scheduledDays.length) return '';
+
+  const hols = get(HOL_KEY, []);
+  let count = 0;
+  const cur = new Date(startDate);
+  let lastSessionDate = null;
+
+  // Count up to totalSessions
+  for(let safety = 0; safety < 365 * 3; safety++){
+    const dayIdx  = cur.getDay();
+    const dateStr = cur.toISOString().split('T')[0];
+
+    if(scheduledDays.includes(dayIdx)){
+      // Check if this day is a holiday
+      const isHol = skipHolidays && hols.some(h => dateStr >= h.start && dateStr <= h.end);
+      if(!isHol){
+        count++;
+        lastSessionDate = dateStr;
+        if(count >= totalSessions) break;
+      }
+    }
+    cur.setDate(cur.getDate() + 1);
+  }
+  return lastSessionDate || '';
+}
+
+/**
+ * Count remaining sessions for private student from today
+ */
+function countRemainingPrivateSessions(s){
+  if(!s.prvSched || !s.start || !s.monthlySessionCount) return null;
+  const scheduledDays = Object.keys(s.prvSched).map(Number);
+  if(!scheduledDays.length) return null;
+
+  const hols = get(HOL_KEY, []);
+  const allAtt = get(ATT_KEY, {});
+  const grps = get('groups', []);
+  const grp  = grps.find(g=>g.id===s.group);
+
+  // Count sessions used (attended or marked present/late)
+  let used = 0;
+  Object.entries(allAtt).forEach(([sid, recs])=>{
+    if(!grp || !sid.startsWith(grp.id+'||')) return;
+    const d = sid.split('||')[1];
+    if(!d || d < s.start) return;
+    const st = recs[s.id];
+    if(st === 'present' || st === 'late') used++;
+  });
+
+  // Count total sessions allocated
+  // monthlySessionCount per month × months, OR calculate from start→end
+  const total = s.totalSessions || s.monthlySessionCount || 8;
+  return Math.max(0, total - used);
+}
+
+/**
+ * Recalculate end date for private student
+ * (call whenever sessions change due to holiday or teacher absence)
+ */
+function recalcPrivateEndDate(stuId){
+  const stus = get('students', []);
+  const i    = stus.findIndex(s=>s.id===stuId);
+  if(i<0) return;
+  const s = stus[i];
+  if(!s.prvSched || !s.start || !s.monthlySessionCount) return;
+
+  // Total sessions = monthly × number of months subscribed
+  // OR just use totalSessions if set
+  const total = s.totalSessions || s.monthlySessionCount || 8;
+  const newEnd = calcPrivateEndDate(s.start, total, s.prvSched, true);
+  if(newEnd && newEnd !== s.end){
+    stus[i].end = newEnd;
+    set('students', stus);
+  }
+  return newEnd;
+}
+
+
+// ══════════════════════════════════════════════════════
+// STUDENT SCHEDULE PDF
+// ══════════════════════════════════════════════════════
+
+function printStudentSchedule(stuId) {
+  const stus  = get('students', []);
+  const grps  = get('groups',   []);
+  const hols  = get(HOL_KEY,    []);
+  const s     = stus.find(x => x.id === stuId);
+  if (!s) { toast('الطالب غير موجود', 'err'); return; }
+  const g = grps.find(x => x.id === s.group);
+
+  const logoSrc = "data:image/png;base64,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";
+
+  // ── Build session dates list ──
+  const sessions = [];
+  const isPrv    = g?.type === 'private';
+
+  if (isPrv && s.prvSched && s.start) {
+    // Private: skip holidays but track them, compensate at end
+    const scheduledDays = Object.keys(s.prvSched).map(Number);
+    const total   = s.totalSessions || s.monthlySessionCount || 8;
+    const cur     = new Date(s.start);
+    let count     = 0;
+    let holCount  = 0; // holidays encountered (for compensation note)
+    for (let i = 0; i < 365 * 3 && count < total; i++) {
+      const dayIdx  = cur.getDay();
+      const dateStr = cur.toISOString().split('T')[0];
+      if (scheduledDays.includes(dayIdx)) {
+        const holMatch = hols.find(h => dateStr >= h.start && dateStr <= h.end);
+        if (holMatch) {
+          // Holiday: skip this session, it will be compensated automatically
+          // (total stays the same, so loop continues past original end)
+          holCount++;
+        } else {
+          count++;
+          sessions.push({
+            num:      count,
+            day:      DAY_AR[dayIdx],
+            date:     cur.toLocaleDateString('ar-BH', { day: 'numeric', month: 'long', year: 'numeric' }),
+            dateStr,
+            isComp:   false  // normal session
+          });
+        }
+      }
+      cur.setDate(cur.getDate() + 1);
+    }
+    // Add compensation note to last sessions if holidays were skipped
+    if (holCount > 0 && sessions.length > 0) {
+      // Mark last holCount sessions as compensatory
+      const startMark = Math.max(0, sessions.length - holCount);
+      for (let i = startMark; i < sessions.length; i++) {
+        sessions[i].isComp = true;
+      }
+    }
+  } else if (!isPrv && g?.days && s.start && s.end) {
+    // Group: iterate from start to end, pick group days
+    const groupDays = (Array.isArray(g.days) ? g.days : g.days.split(/[،,]/).map(x=>x.trim()))
+      .map(d => DAY_AR.indexOf(d)).filter(i => i >= 0);
+    const cur    = new Date(s.start);
+    const endDt  = new Date(s.end);
+    let count    = 0;
+    while (cur <= endDt) {
+      const dayIdx  = cur.getDay();
+      const dateStr = cur.toISOString().split('T')[0];
+      if (groupDays.includes(dayIdx)) {
+        const isHol = hols.some(h => dateStr >= h.start && dateStr <= h.end);
+        if (!isHol) {
+          count++;
+          sessions.push({
+            num:  count,
+            day:  DAY_AR[dayIdx],
+            date: cur.toLocaleDateString('ar-BH', { day: 'numeric', month: 'long', year: 'numeric' }),
+            dateStr
+          });
+        }
+      }
+      cur.setDate(cur.getDate() + 1);
+    }
+  }
+
+  // ── Build days/time display ──
+  let daysTime = '';
+  if (isPrv && s.prvSched) {
+    const parts = Object.entries(s.prvSched)
+      .sort((a,b)=>Number(a[0])-Number(b[0]))
+      .map(([k,v]) => DAY_AR[Number(k)] + (v ? ' — ' + v : ''));
+    daysTime = parts.join(' &nbsp;|&nbsp; ');
+  } else if (g?.days) {
+    daysTime = (Array.isArray(g.days) ? g.days.join('، ') : g.days)
+             + (g.time ? ' &nbsp;|&nbsp; ' + g.time : '');
+  }
+
+  const firstSession = sessions[0]?.date || s.start || '—';
+  const lastSession  = sessions[sessions.length-1]?.date || s.end || '—';
+
+  // ── Compute remaining & attendance rate ──
+  const allAtt  = get(ATT_KEY, {});
+  let presCount = 0, absCount = 0;
+  if (g) {
+    Object.entries(allAtt).forEach(([sid, recs]) => {
+      if (!sid.startsWith(g.id + '||')) return;
+      const st = recs[stuId];
+      if (st === 'present' || st === 'late') presCount++;
+      else if (st === 'absent') absCount++;
+    });
+  }
+  const attRate = (presCount + absCount) > 0
+    ? Math.round(presCount / (presCount + absCount) * 100) : 0;
+
+  // ── Payment status ──
+  const pays   = get('pays', {});
+  const curMK  = new Date().toISOString().slice(0, 7);
+  const paidNow = !!(pays[stuId]?.[curMK]);
+  const payAmts = get('payAmounts', {});
+  const feeAmt  = payAmts[stuId]?.[curMK] !== undefined
+    ? payAmts[stuId][curMK] : (s.fee || 0);
+
+  // ── HTML ──
+  const html = `<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>جدول ${s.name}</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap');
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Cairo', Arial, sans-serif;
+    direction: rtl;
+    background: #fff;
+    color: #1a1a2e;
+    padding: 28px 32px;
+    font-size: 13px;
+  }
+
+  /* ── HEADER ── */
+  .header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+    gap: 20px;
+  }
+  .logo {
+    width: 64px;
+    height: 64px;
+    object-fit: contain;
+    flex-shrink: 0;
+  }
+  .academy-name {
+    flex: 1;
+    text-align: center;
+  }
+  .academy-name h1 {
+    font-size: 32px;
+    font-weight: 900;
+    color: #1a1a2e;
+    line-height: 1.1;
+  }
+  .academy-name .sub {
+    font-size: 13px;
+    color: #64748b;
+    margin-top: 4px;
+  }
+  .academy-name .phone {
+    font-size: 15px;
+    font-weight: 800;
+    color: #f5a623;
+    margin-top: 2px;
+  }
+
+  /* ── DIVIDER ── */
+  .divider {
+    height: 3px;
+    background: linear-gradient(to left, #f5a623, #1a1a2e);
+    border-radius: 2px;
+    margin: 12px 0 18px;
+  }
+
+  /* ── INFO TABLE ── */
+  .info-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 18px;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .info-table td {
+    padding: 11px 16px;
+    border-bottom: 1px solid #e2e8f0;
+    vertical-align: top;
+  }
+  .info-table tr:last-child td { border-bottom: none; }
+  .info-table td:nth-child(odd) { border-left: 1px solid #e2e8f0; }
+  .info-lbl {
+    font-size: 11px;
+    color: #94a3b8;
+    font-weight: 600;
+    margin-bottom: 3px;
+  }
+  .info-val {
+    font-size: 15px;
+    font-weight: 800;
+    color: #1a1a2e;
+  }
+
+  /* ── SESSIONS TABLE ── */
+  .sessions-title {
+    background: #1a1a2e;
+    color: #fff;
+    padding: 0;
+    border-radius: 8px 8px 0 0;
+    overflow: hidden;
+    margin-bottom: 0;
+  }
+  .sessions-title table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .sessions-title th {
+    padding: 12px 20px;
+    text-align: center;
+    font-size: 14px;
+    font-weight: 800;
+    color: #fff;
+    border-left: 1px solid rgba(255,255,255,.15);
+  }
+  .sessions-title th:last-child { border-left: none; }
+
+  .sessions-body {
+    border: 1.5px solid #e2e8f0;
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    overflow: hidden;
+    margin-bottom: 20px;
+  }
+  .sessions-body table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .sessions-body td {
+    padding: 10px 20px;
+    text-align: center;
+    border-bottom: 1px solid #f1f5f9;
+    font-size: 13px;
+    color: #334155;
+  }
+  .sessions-body tr:last-child td { border-bottom: none; }
+  .sessions-body tr:nth-child(even) td { background: #f8fafc; }
+  .session-num {
+    font-weight: 900;
+    color: #1a1a2e;
+    font-size: 14px;
+  }
+
+  /* ── FOOTER NOTES ── */
+  .notes-section {
+    margin-top: 18px;
+    border-top: 2px solid #f1f5f9;
+    padding-top: 14px;
+  }
+  .notes-title {
+    font-weight: 900;
+    font-size: 14px;
+    color: #1a1a2e;
+    margin-bottom: 8px;
+  }
+  .note-item {
+    font-size: 12px;
+    color: #64748b;
+    margin-bottom: 5px;
+    padding-right: 12px;
+    position: relative;
+  }
+  .note-item::before {
+    content: '*';
+    position: absolute;
+    right: 0;
+    color: #f5a623;
+    font-weight: 900;
+  }
+
+  /* ── PAYMENT BADGE ── */
+  .pay-badge {
+    display: inline-block;
+    padding: 3px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 800;
+  }
+  .pay-ok   { background: #d1fae5; color: #059669; }
+  .pay-no   { background: #fee2e2; color: #dc2626; }
+
+  @media print {
+    body { padding: 15px 18px; }
+    @page { size: A4; margin: 8mm; }
+    button { display: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <img src="${logoSrc}" class="logo" alt="بالقلم">
+  <div class="academy-name">
+    <h1>أكاديمية بالقلم</h1>
+    <div class="sub">جدول الحصص الشهري</div>
+    <div class="phone">${s.phone || ''}</div>
+  </div>
+  <div style="width:64px"></div><!-- spacer to center title -->
+</div>
+
+<div class="divider"></div>
+
+<!-- INFO TABLE -->
+<table class="info-table">
+  <tr>
+    <td style="width:50%">
+      <div class="info-lbl">اسم الطالب :</div>
+      <div class="info-val">${s.name}</div>
+    </td>
+    <td style="width:50%">
+      <div class="info-lbl">رقم ولي الأمر :</div>
+      <div class="info-val">${s.phone || '—'}</div>
+    </td>
+  </tr>
+  <tr>
+    <td>
+      <div class="info-lbl">المستوى :</div>
+      <div class="info-val">${g?.name || s.level || '—'}</div>
+    </td>
+    <td>
+      <div class="info-lbl">رقم الطالب :</div>
+      <div class="info-val">${s.sid || '—'}</div>
+    </td>
+  </tr>
+  <tr>
+    <td>
+      <div class="info-lbl">أول حصة :</div>
+      <div class="info-val">${firstSession}</div>
+    </td>
+    <td>
+      <div class="info-lbl">آخر حصة :</div>
+      <div class="info-val">${lastSession}</div>
+    </td>
+  </tr>
+  <tr>
+    <td>
+      <div class="info-lbl">المعلمة :</div>
+      <div class="info-val">${s.teacher || g?.teacher || '—'}</div>
+    </td>
+    <td>
+      <div class="info-lbl">الوقت :</div>
+      <div class="info-val">${isPrv
+        ? (Object.values(s.prvSched||{}).find(Boolean) || g?.time || '—')
+        : (g?.time || '—')
+      }</div>
+    </td>
+  </tr>
+  ${sessions.length ? `<tr>
+    <td>
+      <div class="info-lbl">إجمالي الحصص :</div>
+      <div class="info-val">${sessions.length} حصة</div>
+    </td>
+    <td>
+      <div class="info-lbl">حالة الدفع :</div>
+      <div class="info-val">
+        <span class="pay-badge ${paidNow ? 'pay-ok' : 'pay-no'}">
+          ${paidNow ? '✓ مدفوع' : '✗ غير مدفوع'}
+        </span>
+        ${feeAmt ? ' &nbsp; ' + feeAmt + ' د' : ''}
+      </div>
+    </td>
+  </tr>` : ''}
+</table>
+
+<!-- SESSIONS TABLE -->
+${sessions.length ? `
+<div class="sessions-title">
+  <table>
+    <tr>
+      <th style="width:15%">الحصة</th>
+      <th style="width:35%">اليوم</th>
+      <th style="width:50%">التاريخ</th>
+    </tr>
+  </table>
+</div>
+<div class="sessions-body">
+  <table>
+    ${sessions.map(sess => `
+    <tr style="${sess.isComp ? 'background:#fffbeb' : ''}">
+      <td><span class="session-num">${sess.num}</span>${sess.isComp ? '<span style="font-size:9px;color:#d97706;display:block;font-weight:700">تعويض</span>' : ''}</td>
+      <td style="font-weight:700;color:${sess.isComp ? '#d97706' : '#475569'}">${sess.day}</td>
+      <td style="color:${sess.isComp ? '#d97706' : '#64748b'}">${sess.date}</td>
+    </tr>`).join('')}
+  </table>
+</div>` : '<div style="text-align:center;padding:30px;color:#94a3b8">لم يتم تحديد أيام الحصص بعد</div>'}
+
+<!-- FOOTER NOTES -->
+<div class="notes-section">
+  <div class="notes-title">الحضور والتأخير</div>
+  <div class="note-item">الالتزام بمواعيد الحضور والانصراف. لا يُعوَّض وقت التأخير عن الحصص.</div>
+  <div class="note-item">المعهد لا يلتزم بتعويض الحصص أو تقديم خصومات لأي سبب شخصي خلال فترة الاشتراك.</div>
+  <div class="notes-title" style="margin-top:12px">العطلات الرسمية</div>
+  <div class="note-item">تلتزم الأكاديمية بجدول العطلات الرسمية في مملكة البحرين ولا يتم تعويض الحصص المتزامنة معها ${isPrv ? '— يتم تعويض طلاب الخصوصي بإضافة حصة بديلة' : ''}.</div>
+  ${s.notes ? `<div class="notes-title" style="margin-top:12px">ملاحظات</div><div class="note-item">${s.notes}</div>` : ''}
+</div>
+
+<div style="text-align:center;margin-top:20px;padding-top:12px;border-top:1px solid #f1f5f9">
+  <button onclick="window.print()" style="padding:10px 28px;background:#1a1a2e;color:#fff;border:none;border-radius:8px;font-family:'Cairo',sans-serif;font-size:14px;font-weight:700;cursor:pointer">🖨 طباعة / حفظ PDF</button>
+</div>
+
+</body>
+</html>`;
+
+  const w = window.open('', '_blank');
+  w.document.write(html);
+  w.document.close();
+}
+
+
+function toggleSidebar(){
+  const sb  = document.getElementById('sb');
+  const ov  = document.getElementById('sb-overlay');
+  const open= sb.classList.toggle('open');
+  if(ov) ov.classList.toggle('show', open);
+}
+function closeSidebar(){
+  const sb = document.getElementById('sb');
+  const ov = document.getElementById('sb-overlay');
+  sb.classList.remove('open');
+  if(ov) ov.classList.remove('show');
+}
+// Close sidebar when nav item clicked on mobile
+document.addEventListener('DOMContentLoaded', ()=>{
+  document.querySelectorAll('.ni').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      if(window.innerWidth <= 768) closeSidebar();
+    });
+  });
+});
+
+
+// ── Mobile sidebar ──
+function toggleSidebar(){
+  const sb = document.getElementById('sb');
+  const ov = document.getElementById('sb-overlay');
+  const isOpen = sb.classList.toggle('open');
+  if(ov) ov.classList.toggle('show', isOpen);
+}
+function closeSidebar(){
+  const sb = document.getElementById('sb');
+  const ov = document.getElementById('sb-overlay');
+  if(sb) sb.classList.remove('open');
+  if(ov) ov.classList.remove('show');
+}
+// Auto-close sidebar when nav item tapped on mobile
+setTimeout(()=>{
+  document.querySelectorAll('.ni').forEach(el=>{
+    el.addEventListener('click', ()=>{ if(window.innerWidth<=768) closeSidebar(); });
+  });
+},500);
 
 </script>
 </body>
