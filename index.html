@@ -811,7 +811,14 @@ CREATE POLICY "allow_all" ON bealqalam_data
     <div class="mb">
       <div class="fg">
         <label class="fl">المجموعة المتأثرة *</label>
-        <select id="tabs-grp" class="fi"></select>
+        <select id="tabs-grp" class="fi" onchange="onTabsGrpChange()"></select>
+      </div>
+      <!-- Student selector — shows only for private groups -->
+      <div class="fg" id="tabs-stu-wrap" style="display:none">
+        <label class="fl">الطالب المتأثر (خصوصي) *</label>
+        <select id="tabs-stu" class="fi">
+          <option value="">اختر الطالب...</option>
+        </select>
       </div>
       <div class="fg"><label class="fl">اسم المعلمة</label><input id="tabs-teacher" class="fi" placeholder="اسم المعلمة الغائبة"></div>
       <div class="fr">
@@ -819,9 +826,9 @@ CREATE POLICY "allow_all" ON bealqalam_data
         <div class="fg"><label class="fl">عدد الحصص الفائتة</label><input type="number" id="tabs-sessions" class="fi" value="1" min="1" max="5"></div>
       </div>
       <div class="fg"><label class="fl">سبب الغياب</label><input id="tabs-reason" class="fi" placeholder="مثال: ظرف طارئ — مرض..."></div>
-      <div class="fg">
+      <div class="fg" id="tabs-comp-wrap">
         <label class="fl">طريقة التعويض</label>
-        <div style="display:flex;gap:8px;margin-top:5px;flex-wrap:wrap">
+        <div style="display:flex;gap:8px;margin-top:5px;flex-wrap:wrap" id="tabs-comp-options">
           <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:13px"><input type="radio" name="tabs-comp" value="extend" checked> تمديد تاريخ نهاية الاشتراك</label>
           <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:13px"><input type="radio" name="tabs-comp" value="session"> إضافة حصة تعويضية</label>
         </div>
@@ -1233,8 +1240,8 @@ let _syncOk = false;
 function _loadCfg() {
   // Pre-configured credentials — no setup needed
   const BUILT_IN = {
-    url: 'https://nibusadlpjgckpaiiedl.supabase.co',
-    key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5pYnVzYWRscGpnY2twYWlpZWRsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc3NDkwNTQsImV4cCI6MjA5MzMyNTA1NH0.nSsQXc2SBGMucAzq0DY4a0K8Lmx6YSpRQ_SSKhFjIZo'
+    url: 'https://kfxdslytyicueybljnsa.supabase.co',
+    key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtmeGRzbHl0eWljdWV5YmxqbnNhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzNzkxODgsImV4cCI6MjA5Mzk1NTE4OH0.R-MAI7C1w0XAVt7lU_Ug5jkiH8fKTLQbpapdyPjl0xY'
   };
   try {
     const s = localStorage.getItem('bq_cloud_cfg');
@@ -1424,8 +1431,8 @@ async function testCloudConn() {
 }
 
 function openCloudMo() {
-  document.getElementById('cloud-url').value = _cloudCfg?.url || 'https://nibusadlpjgckpaiiedl.supabase.co';
-  document.getElementById('cloud-key').value = _cloudCfg?.key || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5pYnVzYWRscGpnY2twYWlpZWRsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc3NDkwNTQsImV4cCI6MjA5MzMyNTA1NH0.nSsQXc2SBGMucAzq0DY4a0K8Lmx6YSpRQ_SSKhFjIZo';
+  document.getElementById('cloud-url').value = _cloudCfg?.url || 'https://kfxdslytyicueybljnsa.supabase.co';
+  document.getElementById('cloud-key').value = _cloudCfg?.key || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtmeGRzbHl0eWljdWV5YmxqbnNhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzNzkxODgsImV4cCI6MjA5Mzk1NTE4OH0.R-MAI7C1w0XAVt7lU_Ug5jkiH8fKTLQbpapdyPjl0xY';
   document.getElementById('mo-cloud').classList.add('open');
 }
 function loadCloudConfig() { _loadCfg(); }
@@ -1707,7 +1714,8 @@ function fillGrpSels(){
 
 function updateBadge(){
   const stus=get('students',[]);
-  const unpaid=stus.filter(s=>!getPay(s.id,curY,curM)).length;
+  // Only count active students this month in badge
+  const unpaid=stus.filter(s=>isActiveInMonth(s,curY,curM)&&!getPay(s.id,curY,curM)).length;
   document.getElementById('unpaid-nb').textContent=unpaid;
   const alrts=buildAlerts();
   document.getElementById('alert-nb').textContent=alrts.length;
@@ -1754,9 +1762,11 @@ function renderNp(){
 // ═══════════════════════════
 function renderDashboard(){
   updateMonthLabels();
-  const stus=get('students',[]);
+  const allStus=get('students',[]);
   const grps=get('groups',[]);
   const gmap=Object.fromEntries(grps.map(g=>[g.id,g]));
+  // Only count students active in this month
+  const stus=allStus.filter(s=>isActiveInMonth(s,curY,curM));
   const paid=stus.filter(s=>getPay(s.id,curY,curM));
   const unpaid=stus.filter(s=>!getPay(s.id,curY,curM));
   const rev=paid.reduce((a,s)=>a+getPayAmount(s.id,curY,curM),0);
@@ -1768,9 +1778,10 @@ function renderDashboard(){
 
   // ── Expiry alerts on dashboard ──
   const today2 = new Date();
-  const expired2   = stus.filter(s=>s.end && Math.ceil((new Date(s.end)-today2)/864e5) < 0 && Math.ceil((new Date(s.end)-today2)/864e5) >= -5);
-  const expiring3  = stus.filter(s=>s.end && Math.ceil((new Date(s.end)-today2)/864e5) >= 0 && Math.ceil((new Date(s.end)-today2)/864e5) <= 3);
-  const expiring7  = stus.filter(s=>s.end && Math.ceil((new Date(s.end)-today2)/864e5) > 3  && Math.ceil((new Date(s.end)-today2)/864e5) <= 7);
+  const allForExpiry = get('students',[]).filter(s=>!s.archived);
+  const expired2   = allForExpiry.filter(s=>s.end && Math.ceil((new Date(s.end)-today2)/864e5) < 0 && Math.ceil((new Date(s.end)-today2)/864e5) >= -5);
+  const expiring3  = allForExpiry.filter(s=>s.end && Math.ceil((new Date(s.end)-today2)/864e5) >= 0 && Math.ceil((new Date(s.end)-today2)/864e5) <= 3);
+  const expiring7  = allForExpiry.filter(s=>s.end && Math.ceil((new Date(s.end)-today2)/864e5) > 3  && Math.ceil((new Date(s.end)-today2)/864e5) <= 7);
   const dashAlerts = document.getElementById('dash-expiry-alerts');
   if(dashAlerts){
     let html = '';
@@ -1879,7 +1890,8 @@ function renderStudents(){
   if(pf==='unpaid') list=list.filter(x=>!getPay(x.id,curY,curM));
   const archivedCount=all.filter(x=>x.archived).length;
   const frozenCount=all.filter(x=>x.frozen&&!x.archived).length;
-  document.getElementById('stu-cnt').textContent=`${list.length} طالب نشط${frozenCount?' — '+frozenCount+' مجمد':''} — ${monthLabel(curY,curM)}${archivedCount?' ('+archivedCount+' مؤرشف)':''}`;
+  const inactiveCount=list.filter(x=>x.end&&new Date(x.end)<new Date()).length;
+  document.getElementById('stu-cnt').textContent=`${list.length} طالب${inactiveCount?' ('+inactiveCount+' منتهي الاشتراك)':''} — ${monthLabel(curY,curM)}${archivedCount?' | '+archivedCount+' مؤرشف)':''}`;
   document.getElementById('stu-tbl').innerHTML=list.map(s=>{
     const g=gmap[s.group]; const p=getPay(s.id,curY,curM);
     return `<tr>
@@ -2118,9 +2130,11 @@ function saveGrp(){
 function renderFinance(){
   updateMonthLabels();
   document.getElementById('fin-month-lbl').textContent=monthLabel(curY,curM);
-  const stus=get('students',[]);
+  const allStus2=get('students',[]);
   const grps=get('groups',[]);
   const gmap=Object.fromEntries(grps.map(g=>[g.id,g]));
+  // Only count students active in selected month
+  const stus=allStus2.filter(s=>isActiveInMonth(s,curY,curM));
   const paid=stus.filter(s=>getPay(s.id,curY,curM));
   const unpaid=stus.filter(s=>!getPay(s.id,curY,curM));
   const rev=paid.reduce((a,s)=>a+getPayAmount(s.id,curY,curM),0);
@@ -2134,7 +2148,7 @@ function renderFinance(){
 
   // Group table
   document.getElementById('fin-tbl').innerHTML=grps.map(g=>{
-    const gs=stus.filter(s=>s.group===g.id);
+    const gs=stus.filter(s=>s.group===g.id); // already filtered by isActiveInMonth
     if(!gs.length) return '';
     const gp=gs.filter(s=>getPay(s.id,curY,curM));
     const gu=gs.filter(s=>!getPay(s.id,curY,curM));
@@ -2177,7 +2191,8 @@ function renderFinance(){
 function buildAlerts(){
   const stus=get('students',[]); const grps=get('groups',[]);
   const alrts=[];
-  const up=stus.filter(s=>!getPay(s.id,curY,curM));
+  const activeStus=stus.filter(s=>isActiveInMonth(s,curY,curM));
+  const up=activeStus.filter(s=>!getPay(s.id,curY,curM));
   if(up.length) alrts.push({t:'err',icon:'🚨',ttl:`${up.length} طلاب لم يدفعوا ${monthLabel(curY,curM)}`,tx:up.slice(0,3).map(s=>s.name).join('، ')+(up.length>3?' وآخرون':'')});
   grps.forEach(g=>{
     const cnt=stus.filter(s=>s.group===g.id).length;
@@ -4123,7 +4138,13 @@ function openTeacherAbsMo(){
   document.getElementById('tabs-reason').value  = '';
   document.getElementById('mo-teacher-abs').classList.add('open');
   updateTabsPreview();
-  document.getElementById('tabs-grp').onchange      = updateTabsPreview;
+  document.getElementById('tabs-grp').onchange = onTabsGrpChange;
+  // Also watch student select for preview
+  setTimeout(()=>{
+    const ss=document.getElementById('tabs-stu');
+    if(ss) ss.onchange = updateTabsPreview;
+  },100);
+  onTabsGrpChange(); // init based on current group
   document.getElementById('tabs-sessions').oninput  = updateTabsPreview;
 }
 
@@ -4137,7 +4158,9 @@ function updateTabsPreview(){
   const el = document.getElementById('tabs-preview');
   if(!el) return;
   if(grp?.type === 'private'){
-    el.innerHTML = `👤 خصوصي — ${grpStus.length} طالب<br>سيتم إضافة <strong>${sessions} حصة</strong> لكل طالب وإعادة حساب تاريخ الانتهاء`;
+    const stuId2  = document.getElementById('tabs-stu')?.value;
+    const stuName = stuId2 ? (stus.find(s=>s.id===stuId2)?.name||'') : '(اختر الطالب)';
+    el.innerHTML = `👤 خصوصي — <strong>${stuName}</strong><br>سيتم إضافة <strong>${sessions} حصة تعويضية</strong> وتمديد الاشتراك تلقائياً`;
   } else {
     const daysPerSess = getDaysPerSession(grp);
     const totalDays   = sessions * daysPerSess;
@@ -4153,12 +4176,18 @@ function saveTeacherAbs(){
   const sessions = Number(document.getElementById('tabs-sessions').value)||1;
   const reason   = document.getElementById('tabs-reason').value.trim();
   const compType = document.querySelector('input[name="tabs-comp"]:checked')?.value || 'extend';
+  const stuId    = document.getElementById('tabs-stu')?.value || null; // private student
 
   if(!grpId || !date){ toast('اختر المجموعة والتاريخ', 'err'); return; }
 
-  const grps = get('groups', []);
-  const grp  = grps.find(g=>g.id===grpId);
-  const stus = get('students', []);
+  const grps    = get('groups', []);
+  const grp     = grps.find(g=>g.id===grpId);
+  const isPrv   = grp?.type === 'private';
+  const stus    = get('students', []);
+
+  // Validate: private needs a student selected
+  if(isPrv && !stuId){ toast('اختر الطالب المتأثر', 'err'); return; }
+
   const daysPerSess = getDaysPerSession(grp);
   const totalDays   = sessions * daysPerSess;
   let extCount = 0;
@@ -4168,37 +4197,44 @@ function saveTeacherAbs(){
   abs.push({
     id: 'tabs_' + Date.now(),
     grpId, grpName: grp?.name||'',
+    stuId: isPrv ? stuId : null,
+    stuName: isPrv ? (stus.find(s=>s.id===stuId)?.name||'') : null,
     teacher, date, sessions, reason, compType,
     daysAdded: compType === 'extend' ? totalDays : 0,
     createdAt: new Date().toISOString()
   });
   set(TABS_KEY, abs);
 
-  if(compType === 'extend'){
+  if(isPrv){
+    // Private: always add session to specific student + recalculate end date
+    const i = stus.findIndex(s=>s.id===stuId);
+    if(i>=0 && stus[i].prvSched && stus[i].start){
+      stus[i].totalSessions = (stus[i].totalSessions || stus[i].monthlySessionCount || 8) + sessions;
+      const newEnd = calcPrivateEndDate(stus[i].start, stus[i].totalSessions, stus[i].prvSched, true);
+      if(newEnd){ stus[i].end = newEnd; }
+      set('students', stus);
+      const stuName = stus[i].name;
+      // Also add to comp record
+      const comp = get(COMP_KEY, {});
+      if(!comp[stuId]) comp[stuId]=[];
+      comp[stuId].push({date, count:sessions, reason:`غياب المعلمة${teacher?' '+teacher:''}`, addedAt:new Date().toISOString()});
+      set(COMP_KEY, comp);
+      toast(`✓ تم إضافة ${sessions} حصة تعويضية لـ ${stuName} — الاشتراك مُمدد حتى ${newEnd}`);
+      extCount = 1;
+    }
+  } else if(compType === 'extend'){
     stus.forEach((s, i) => {
-      if(s.group !== grpId || s.archived) return;
-      const g2 = grps.find(x=>x.id===grpId);
-      if(g2?.type === 'private'){
-        // Private: add sessions and recalculate end
-        if(!s.prvSched || !s.start || !s.monthlySessionCount) return;
-        stus[i].totalSessions = (s.totalSessions || s.monthlySessionCount || 8) + sessions;
-        const newEnd = calcPrivateEndDate(s.start, stus[i].totalSessions, s.prvSched, true);
-        if(newEnd){ stus[i].end = newEnd; extCount++; }
-      } else {
-        // Group: extend by days
-        if(!s.end || s.end < date) return;
-        stus[i].end = addDaysToDate(s.end, totalDays);
-        extCount++;
-      }
+      if(s.group !== grpId || s.archived || !s.end || s.end < date) return;
+      stus[i].end = addDaysToDate(s.end, totalDays);
+      extCount++;
     });
     set('students', stus);
-    toast(`✓ تم تمديد ${extCount} اشتراك`);
+    toast(`✓ تم تمديد ${extCount} اشتراك بمقدار ${totalDays} يوم`);
   } else {
-    // Add compensatory sessions to each student
     const comp = get(COMP_KEY, {});
     stus.filter(s=>s.group===grpId&&!s.archived).forEach(s=>{
       if(!comp[s.id]) comp[s.id]=[];
-      comp[s.id].push({date, count: sessions, reason: `غياب المعلمة: ${teacher||''}`, addedAt: new Date().toISOString()});
+      comp[s.id].push({date, count:sessions, reason:`غياب المعلمة${teacher?' '+teacher:''}`, addedAt:new Date().toISOString()});
       extCount++;
     });
     set(COMP_KEY, comp);
@@ -4226,10 +4262,12 @@ function renderTeacherAbsList(){
     <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--brd)">
       <div style="width:36px;height:36px;border-radius:9px;background:var(--warn-l);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">👩‍🏫</div>
       <div style="flex:1">
-        <div style="font-weight:800;font-size:13px">${a.grpName} ${a.teacher?'— '+a.teacher:''}</div>
+        <div style="font-weight:800;font-size:13px">
+          ${a.grpName}${a.stuName?' — '+a.stuName:''}${a.teacher?' ('+a.teacher+')':''}
+        </div>
         <div style="font-size:11px;color:var(--mu);margin-top:2px">
           ${a.date} &nbsp;|&nbsp; ${a.sessions} حصة &nbsp;|&nbsp;
-          ${a.compType==='extend'?`تمديد ${a.daysAdded} يوم`:'حصة تعويضية'}
+          ${a.stuId?'حصة تعويضية للطالب':a.compType==='extend'?`تمديد ${a.daysAdded} يوم`:'حصة تعويضية'}
           ${a.reason?'&nbsp;|&nbsp; '+a.reason:''}
         </div>
       </div>
@@ -4841,6 +4879,70 @@ setTimeout(()=>{
     el.addEventListener('click', ()=>{ if(window.innerWidth<=768) closeSidebar(); });
   });
 },500);
+
+
+function onTabsGrpChange(){
+  const grpId = document.getElementById('tabs-grp')?.value;
+  const grps  = get('groups', []);
+  const grp   = grps.find(g=>g.id===grpId);
+  const isPrv = grp?.type === 'private';
+
+  // Show/hide student selector
+  const stuWrap = document.getElementById('tabs-stu-wrap');
+  if(stuWrap) stuWrap.style.display = isPrv ? 'block' : 'none';
+
+  if(isPrv){
+    // Fill student selector with private students in this group
+    const stus   = get('students', []);
+    const grpStus= stus.filter(s=>s.group===grpId&&!s.archived);
+    const stuSel = document.getElementById('tabs-stu');
+    if(stuSel){
+      stuSel.innerHTML = '<option value="">اختر الطالب...</option>' +
+        grpStus.map(s=>`<option value="${s.id}">${s.name}${s.teacher?' — '+s.teacher:''}</option>`).join('');
+    }
+    // For private: force compensation type to "session" (add session)
+    // and hide the choice — private always gets session compensation
+    const compOpts = document.getElementById('tabs-comp-options');
+    if(compOpts){
+      compOpts.innerHTML = `
+        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:13px">
+          <input type="radio" name="tabs-comp" value="session" checked> إضافة حصة تعويضية للطالب
+        </label>`;
+    }
+    // Sessions count = 1 for private (one session missed)
+    const sessEl = document.getElementById('tabs-sessions');
+    if(sessEl){ sessEl.value='1'; }
+  } else {
+    // Group: restore original options
+    const compOpts = document.getElementById('tabs-comp-options');
+    if(compOpts){
+      compOpts.innerHTML = `
+        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:13px">
+          <input type="radio" name="tabs-comp" value="extend" checked> تمديد تاريخ نهاية الاشتراك
+        </label>
+        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:13px">
+          <input type="radio" name="tabs-comp" value="session"> إضافة حصة تعويضية
+        </label>`;
+    }
+  }
+  updateTabsPreview();
+}
+
+
+// ── Is student active in a given month? ──
+function isActiveInMonth(s, y, m){
+  if(s.archived) return false;
+  const monthStart = new Date(y, m, 1);          // first day of month
+  const monthEnd   = new Date(y, m+1, 0);        // last day of month
+  // Must have started by end of month
+  if(s.start && new Date(s.start) > monthEnd) return false;
+  // If has end date, must not have ended before month started
+  if(s.end){
+    const endDate = new Date(s.end);
+    if(endDate < monthStart) return false;
+  }
+  return true;
+}
 
 </script>
 </body>
