@@ -1044,6 +1044,7 @@ CREATE POLICY "allow_all" ON bealqalam_data
       <div class="sync-bar" onclick="syncFromCloud()" title="اضغط للمزامنة من السحابة" style="cursor:pointer">
         <span class="sync-dot" id="sync-dot" style="background:#f59e0b"></span>
         <span id="sync-lbl" style="font-size:11px">↻ جاري الاتصال...</span>
+      <button onclick="openBackupMo()" title="النسخ الاحتياطية" style="background:none;border:none;cursor:pointer;font-size:16px;padding:4px" title="💾 نسخ احتياطية">💾</button>
         <span id="sync-time" style="font-size:10px;color:var(--li)"></span>
       </div>
       <div class="ibtn" onclick="openCloudMo()" title="إعداد السحابة ☁️" style="font-size:13px">☁️</div>
@@ -1867,6 +1868,7 @@ function renderUsersPage(){
 function initApp(){
   seed();
   _initCloud(); // start cloud sync
+  setTimeout(_autoBackup, 3000); // auto backup after data loads
   buildColorPicks();
   fillGrpSels();
   updateMonthLabels();
@@ -5696,6 +5698,95 @@ async function forcePushToCloud(){
   } catch(e){
     toast('خطأ: '+e.message,'err');
   }
+}
+
+
+// ══════════════════════════════════════════════════════
+// AUTO BACKUP SYSTEM — يحفظ نسخة يومية تلقائياً
+// ══════════════════════════════════════════════════════
+const BACKUP_KEYS = ['students','groups','pays','payAmounts','teachers',
+                     'att_v3','comp_v3','holidays','teacher_abs','users'];
+
+function _autoBackup(){
+  const today = new Date().toISOString().split('T')[0];
+  const lastBackup = localStorage.getItem('bq4_last_backup_date');
+  if(lastBackup === today) return; // already backed up today
+
+  const backup = {};
+  BACKUP_KEYS.forEach(k=>{
+    const val = localStorage.getItem('bq4_'+k);
+    if(val) backup[k] = val;
+  });
+
+  if(!Object.keys(backup).length) return;
+
+  // Save backup with date
+  localStorage.setItem('bq4_backup_'+today, JSON.stringify(backup));
+  localStorage.setItem('bq4_last_backup_date', today);
+
+  // Keep only last 7 days
+  const allKeys = Object.keys(localStorage)
+    .filter(k=>k.startsWith('bq4_backup_2'))
+    .sort().reverse();
+  allKeys.slice(7).forEach(k=>localStorage.removeItem(k));
+
+  console.log('✓ Auto backup saved for', today);
+}
+
+function getBackupDates(){
+  return Object.keys(localStorage)
+    .filter(k=>k.startsWith('bq4_backup_2'))
+    .map(k=>k.replace('bq4_backup_',''))
+    .sort().reverse();
+}
+
+function restoreBackup(date){
+  if(!confirm(`هل تريد استعادة نسخة ${date}؟\nسيتم استبدال البيانات الحالية.`)) return;
+  const backup = JSON.parse(localStorage.getItem('bq4_backup_'+date)||'{}');
+  if(!Object.keys(backup).length){ toast('لا توجد نسخة لهذا التاريخ','err'); return; }
+
+  BACKUP_KEYS.forEach(k=>{
+    if(backup[k]){
+      localStorage.setItem('bq4_'+k, backup[k]);
+      localStorage.setItem('bq4_'+k+'_localts', new Date().toISOString());
+      _cloudQueue.add(k);
+    }
+  });
+
+  toast(`✓ تم استعادة نسخة ${date} — جاري الرفع للسحابة...`);
+  _schedulePush();
+  setTimeout(()=>{ location.reload(); }, 2000);
+}
+
+function openBackupMo(){
+  const dates = getBackupDates();
+  const content = dates.length
+    ? dates.map(d=>`
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--bg);border-radius:9px;border:1px solid var(--brd);margin-bottom:7px">
+        <div>
+          <div style="font-weight:700;font-size:13px">📅 ${d}</div>
+          <div style="font-size:11px;color:var(--mu)">نسخة احتياطية محفوظة</div>
+        </div>
+        <button class="btn btn-ac btn-sm" onclick="restoreBackup('${d}')">↩ استعادة</button>
+      </div>`).join('')
+    : '<div style="text-align:center;padding:20px;color:var(--mu)">لا توجد نسخ احتياطية بعد<br><span style="font-size:12px">يتم الحفظ تلقائياً يومياً</span></div>';
+
+  // Show in a simple modal
+  const overlay = document.createElement('div');
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:3000;display:flex;align-items:center;justify-content:center';
+  overlay.innerHTML=`
+    <div style="background:var(--card);border-radius:16px;padding:22px;width:90%;max-width:460px;max-height:80vh;overflow-y:auto">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <div style="font-weight:900;font-size:15px">💾 النسخ الاحتياطية (آخر 7 أيام)</div>
+        <button onclick="this.closest('div[style*=fixed]').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--mu)">✕</button>
+      </div>
+      ${content}
+      <div style="font-size:11px;color:var(--mu);margin-top:12px;padding-top:10px;border-top:1px solid var(--brd)">
+        💡 النسخ محفوظة في هذا المتصفح فقط. للحفاظ عليها لا تمسح بيانات المتصفح.
+      </div>
+    </div>`;
+  overlay.onclick = e => { if(e.target===overlay) overlay.remove(); };
+  document.body.appendChild(overlay);
 }
 
 </script>
