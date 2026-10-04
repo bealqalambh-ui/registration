@@ -1570,49 +1570,71 @@ let _syncOk = false;
 // ── ربط المالية بملف Google Sheet (بالقلم_المالية الرسمية) ──
 const FINANCE_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbw9ScF4848pheGeHwBNBkZQU1no4kV_9wdOFAD8Zriy9NaNd029r4_J-MG_CllJRKJzbA/exec';
 const FINANCE_SECRET = 'Mohsen96@1';
-function _syncToFinanceSheet(obj, isNew){
-  try{
-    if(!isNew) return; // فقط عند تسجيل طالب جديد، مو عند التعديل
-    if(!obj.start) return;
-    const grps = get('groups',[]);
-    const g = grps.find(x=>x.id===obj.group);
-    fetch(FINANCE_WEBHOOK_URL, {
-      method:'POST',
-      headers:{'Content-Type':'text/plain;charset=utf-8'},
-      body: JSON.stringify({
-        secret: FINANCE_SECRET,
-        action: 'addStudentMonths',
-        name: obj.name,
-        group: g?.name || '',
-        phone: obj.phone || '',
-        totalMonths: obj.subscriptionMonths || 1,
-        monthlyAmount: obj.fee || 0,
-        startMonth: obj.start.slice(0,7)
-      })
-    }).catch(e=>console.warn('finance sync failed', e));
-  }catch(e){ console.warn('finance sync error', e); }
-}
 const FINANCE_METHOD_LABELS = {cash:'كاش', benefit:'بنفت', card:'بطاقة'};
-function _syncPaymentToFinanceSheet(stuId, mk, paid, method){
-  try{
-    const stus = get('students',[]);
-    const s = stus.find(x=>x.id===stuId);
-    if(!s) return;
-    fetch(FINANCE_WEBHOOK_URL, {
-      method:'POST',
-      headers:{'Content-Type':'text/plain;charset=utf-8'},
-      body: JSON.stringify({
-        secret: FINANCE_SECRET,
-        action: 'updateStudentPayment',
-        name: s.name,
-        phone: s.phone || '',
-        month: mk,
-        paid: !!paid,
-        method: FINANCE_METHOD_LABELS[method] || ''
-      })
-    }).catch(e=>console.warn('finance payment sync failed', e));
-  }catch(e){ console.warn('finance payment sync error', e); }
+
+// يبني "الحالة الكاملة" للطالب كما هي بالسيستم: كل أشهره، مبلغ كل شهر،
+// دفع أو لا، طريقة الدفع، ونص "الأشهر التي سجل بها" (مثل 9-10-11)
+function _financeStudentPayload(s){
+  if(!s || !s.start || !s.name) return null;
+  const g = get('groups',[]).find(x=>x.id===s.group);
+  const isPrv = g?.type==='private';
+  const pays  = (get('pays',{})[s.id])||{};
+  const amts  = (get('payAmounts',{})[s.id])||{};
+  const meths = (get('payMethods',{})[s.id])||{};
+  const startMk = s.start.slice(0,7);
+  const dur = s.subscriptionMonths||1;
+  let mks = [];
+  if(isPrv){
+    const set = new Set([startMk]);
+    Object.keys(amts).concat(Object.keys(pays)).forEach(k=>{ if(/^\d{4}-\d{2}$/.test(k) && k>=startMk) set.add(k); });
+    mks = [...set].sort();
+  } else {
+    for(let i=0;i<dur;i++) mks.push(monthKeyAt(s.start,i));
+  }
+  const perMonth = (!isPrv && dur>1) ? Math.round((s.fee||0)/dur) : (s.fee||0);
+  const months = mks.map(mk=>{
+    const paid = !!pays[mk];
+    return {
+      mk,
+      amount: amts[mk]!==undefined ? Number(amts[mk])||0 : perMonth,
+      paid,
+      method: paid ? (FINANCE_METHOD_LABELS[meths[mk]||'cash']||'') : ''
+    };
+  });
+  return {
+    name: s.name, phone: s.phone||'', group: g?.name||'',
+    totalMonths: mks.length,
+    totalFee: months.reduce((a,m)=>a+(Number(m.amount)||0),0),
+    monthsLabel: mks.map(k=>Number(k.slice(5))).join('-'),
+    months
+  };
 }
+
+// طابور مزامنة: أي تغيير على الطالب (تسجيل، تعديل، دفع، طريقة دفع) ينتظر
+// ثانية ونص ثم يرسل حالته الكاملة بطلب واحد — ما في ترتيب طلبات يخرب
+const _finTimers = {};
+let _finChain = Promise.resolve();
+function _queueFinanceSync(stuId){
+  if(!stuId) return;
+  clearTimeout(_finTimers[stuId]);
+  _finTimers[stuId] = setTimeout(function(){
+    delete _finTimers[stuId];
+    const s = get('students',[]).find(x=>x.id===stuId);
+    const payload = _financeStudentPayload(s);
+    if(!payload) return;
+    _finChain = _finChain.then(function(){
+      return fetch(FINANCE_WEBHOOK_URL, {
+        method:'POST',
+        headers:{'Content-Type':'text/plain;charset=utf-8'},
+        body: JSON.stringify(Object.assign({secret: FINANCE_SECRET, action:'syncStudent'}, payload))
+      }).catch(e=>console.warn('finance sync failed', e));
+    });
+  }, 1500);
+}
+
+// أسماء قديمة تُستدعى من أماكن مختلفة بالكود — كلها تمر على نفس الطابور
+function _syncToFinanceSheet(obj, isNew){ if(obj) _queueFinanceSync(obj.id); return Promise.resolve(); }
+function _syncPaymentToFinanceSheet(stuId){ _queueFinanceSync(stuId); }
 
 function _loadCfg() {
   // Pre-configured credentials — no setup needed
@@ -1633,11 +1655,62 @@ function _schedulePush() {
   _pushTimer = setTimeout(_pushToCloud, 1500); // debounce 1.5s
 }
 
+// ── طلبات الاختبار التشخيصي القادمة من نموذج ولي الأمر ──
+// قائمة 'diagnostic' تُحفظ كقطعة وحدة، فندمج طلبات أولياء الأمور (source:'parent')
+// بدل ما نستبدلها، عشان ما تضيع لو صار تعديل من السيستم بنفس الوقت.
+function _esc(s){
+  return String(s==null?'':s).replace(/[&<>"'`]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','`':'&#96;'}[c];});
+}
+// تنظيف أي طلب قادم من نموذج عام: نصوص قصيرة وبدون رموز HTML
+function _cleanDiagEntry(d){
+  var clean = function(v,n){ return String(v==null?'':v).replace(/[<>"'`&]/g,'').slice(0,n).trim(); };
+  return {
+    id: /^diag_\d+$/.test(d.id) ? d.id : ('diag_'+Date.now()),
+    name: clean(d.name,80), phone: clean(d.phone,20).replace(/[^0-9+ ]/g,''),
+    grade: clean(d.grade,40),
+    date: /^\d{4}-\d{2}-\d{2}$/.test(d.date) ? d.date : new Date().toISOString().split('T')[0],
+    time: /^\d{2}:\d{2}$/.test(d.time) ? d.time : '',
+    type: d.type==='ld' ? 'ld' : 'arabic',
+    result:'', status:'pending', notes: clean(d.notes,200), source:'parent'
+  };
+}
+function _diagDeletedIds(){
+  try { return JSON.parse(localStorage.getItem('bq_diag_deleted') || '[]'); } catch { return []; }
+}
+function _mergeParentDiag(localList, cloudList){
+  if (!Array.isArray(localList)) localList = [];
+  if (!Array.isArray(cloudList)) return localList;
+  const have = new Set(localList.map(d => d.id));
+  const deleted = new Set(_diagDeletedIds());
+  let added = 0;
+  cloudList.forEach(d => {
+    if (d && d.source === 'parent' && !have.has(d.id) && !deleted.has(d.id)) {
+      localList.push(_cleanDiagEntry(d)); added++;
+    }
+  });
+  return added ? localList : null; // null = ما في جديد
+}
+async function _fetchCloudDiag(){
+  const r = await fetch(`${_cloudCfg.url}/rest/v1/bealqalam_data?select=value&key=eq.${DIAG_KEY}`,
+    { headers: { 'apikey': _cloudCfg.key, 'Authorization': 'Bearer ' + _cloudCfg.key } });
+  if (!r.ok) return null;
+  const rows = await r.json();
+  try { return rows[0]?.value ? JSON.parse(rows[0].value) : []; } catch { return null; }
+}
+
 // ── Push queued keys to Supabase ──
 async function _pushToCloud() {
   if (!_cloudCfg || _cloudQueue.size === 0) return;
   const keys = [..._cloudQueue];
   _cloudQueue.clear();
+  // قبل رفع قائمة الاختبار التشخيصي: ادمج أي طلب جديد من ولي أمر وصل للسحابة
+  if (keys.includes(DIAG_KEY)) {
+    try {
+      const cloudList = await _fetchCloudDiag();
+      const merged = _mergeParentDiag(JSON.parse(localStorage.getItem(DB(DIAG_KEY)) || '[]'), cloudList);
+      if (merged) localStorage.setItem(DB(DIAG_KEY), JSON.stringify(merged));
+    } catch (e) { console.warn('diag merge before push failed', e); }
+  }
   try {
     const rows = keys.map(k => ({
       key: k,
@@ -1696,6 +1769,12 @@ async function _pullFromCloud() {
           localStorage.setItem(DB(row.key), row.value);
           localStorage.setItem(DB(row.key + '_ts'), cloudTs);
           updated++;
+        } else if (row.key === DIAG_KEY) {
+          // النسخة المحلية أحدث — لا نستبدلها، بس نضيف لها طلبات أولياء الأمور الجديدة
+          try {
+            const merged = _mergeParentDiag(JSON.parse(localStorage.getItem(DB(DIAG_KEY)) || '[]'), JSON.parse(row.value));
+            if (merged) { set(DIAG_KEY, merged); updated++; }
+          } catch (e) { console.warn('diag merge on pull failed', e); }
         }
       }
     });
@@ -1742,7 +1821,7 @@ async function syncFromCloud() {
     const active = document.querySelector('.page.active');
     if (active) {
       const id = active.id.replace('page-', '');
-      const renders = {students:renderStudents,groups:renderGroups,finance:renderFinance,teachers:renderTeachers,alerts:renderAlerts};
+      const renders = {students:renderStudents,groups:renderGroups,finance:renderFinance,teachers:renderTeachers,alerts:renderAlerts,diagnostic:renderDiagList};
       if (renders[id]) renders[id]();
     }
   } else {
@@ -1770,9 +1849,10 @@ async function _initCloud() {
       const changed = await _pullFromCloud();
       if (changed) {
         renderDashboard();
+        if (document.getElementById('page-diagnostic')?.classList.contains('active')) renderDiagList();
       }
     }
-  }, 300000);
+  }, 120000);
 }
 
 // ── Save cloud config ──
@@ -2257,12 +2337,12 @@ function renderDashboard(){
     if(diagRem.today.length) html += '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#fef2f2;border-radius:10px;border:1px solid #fecaca;margin-bottom:8px">'
       +'<div style="font-size:20px">🧪</div>'
       +'<div><div style="font-weight:800;font-size:13px;color:#dc2626">اختبار تشخيصي اليوم!</div>'
-      +'<div style="font-size:12px;color:#64748b">'+diagRem.today.map(function(d){return d.name+(d.time?' — '+d.time:'');}).join(' | ')+'</div></div>'
+      +'<div style="font-size:12px;color:#64748b">'+diagRem.today.map(function(d){return _esc(d.name)+(d.time?' — '+_esc(d.time):'');}).join(' | ')+'</div></div>'
       +'<button onclick="goDiagPage()" style="margin-right:auto;background:#dc2626;color:#fff;border:none;border-radius:8px;padding:4px 10px;font-size:11px;cursor:pointer">عرض</button></div>';
     if(diagRem.tmrw.length) html += '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#fffbeb;border-radius:10px;border:1px solid #fcd34d;margin-bottom:8px">'
       +'<div style="font-size:20px">🧪</div>'
       +'<div><div style="font-weight:800;font-size:13px;color:#d97706">اختبار تشخيصي غداً</div>'
-      +'<div style="font-size:12px;color:#64748b">'+diagRem.tmrw.map(function(d){return d.name+(d.time?' — '+d.time:'');}).join(' | ')+'</div></div>'
+      +'<div style="font-size:12px;color:#64748b">'+diagRem.tmrw.map(function(d){return _esc(d.name)+(d.time?' — '+_esc(d.time):'');}).join(' | ')+'</div></div>'
       +'<button onclick="goDiagPage()" style="margin-right:auto;background:#d97706;color:#fff;border:none;border-radius:8px;padding:4px 10px;font-size:11px;cursor:pointer">عرض</button></div>';
     if(expired2.length) html += `
       <div style="display:flex;align-items:flex-start;gap:10px;padding:11px 14px;background:var(--err-l);border:1px solid rgba(239,68,68,.3);border-radius:10px;margin-bottom:8px">
@@ -2619,7 +2699,8 @@ function saveStu(){
   // Save the core student record FIRST and unconditionally — this must never
   // be blocked by an error in the (more fragile) per-month breakdown logic below.
   set('students',stus);
-  _syncToFinanceSheet(obj, _isNewStu);
+  // مزامنة الاكسل (تنتظر ثانية ونص — بعد ما تنحفظ المبالغ وحالة الدفع تحت)
+  _queueFinanceSync(obj.id);
   // Save per-month fees AND paid status
   try {
     const _amts = get('payAmounts',{});
@@ -3038,6 +3119,35 @@ function _firstLastSessionDates(startStr, endStr, weekdaySet){
   return [first, last];
 }
 
+// تواريخ حصص الطالب — نفس حساب "جدول الطالب" (printStudentSchedule) بالضبط:
+// من تاريخ البداية إلى تاريخ النهاية، على أيام الجدول، مع استثناء الإجازات.
+// نستخدمها بالإيصال عشان "يغطي الحصص" يطابق الجدول حرفيًا.
+function _stuScheduleSessionDates(s, g){
+  if(!s || !s.start) return [];
+  const isPrv = g?.type==='private';
+  const hols = get(HOL_KEY,[]);
+  const startDate = new Date(s.start);
+  const endDate   = s.end ? new Date(s.end) : new Date(new Date().setMonth(new Date().getMonth()+3));
+  let scheduledDays = [];
+  if(isPrv && s.prvSched){
+    scheduledDays = Object.keys(s.prvSched).map(Number);
+  } else if(g?.days){
+    const DAY_MAP = {'الأحد':0,'الاثنين':1,'الثلاثاء':2,'الأربعاء':3,'الخميس':4,'الجمعة':5,'السبت':6};
+    scheduledDays = g.days.split(/[،,]/).map(d=>DAY_MAP[d.trim()]).filter(d=>d!==undefined);
+  }
+  if(!scheduledDays.length) return [];
+  const out = [];
+  let cur = new Date(startDate);
+  while(cur <= endDate && out.length < 200){
+    const dateStr = cur.toISOString().split('T')[0];
+    if(scheduledDays.includes(cur.getDay()) && !hols.some(h=>dateStr>=h.start&&dateStr<=h.end)){
+      out.push(dateStr);
+    }
+    cur.setDate(cur.getDate()+1);
+  }
+  return out;
+}
+
 var _currentRcptStuId = null;
 
 async function sendRcptWhatsapp(){
@@ -3173,7 +3283,12 @@ function rcptHTML(s,g,dateStr,rcptNo,paidMonths,totalPaid,hasPaid){
     // scheduled class days within that period (not just calendar bounds)
     var coverStart='—', coverEnd='—';
     var calWinStart=null, calWinEnd=null;
-    if(paidMonths.length>0){
+    // الطالب الخصوصي: الباقة عدد حصص مو شهر تقويمي — نعرض أول وآخر حصة
+    // من جدوله نفسه (من البداية للنهاية) بدل ما نقصها على نهاية الشهر
+    var _prvDates = (g && g.type==='private') ? _stuScheduleSessionDates(s, g) : [];
+    if(_prvDates.length){
+      coverStart=_prvDates[0]; coverEnd=_prvDates[_prvDates.length-1];
+    } else if(paidMonths.length>0){
       var sortedMks=paidMonths.map(function(m){return m.mk;}).sort();
       var firstMk=sortedMks[0]; // e.g. "2026-08"
       var lastMk=sortedMks[sortedMks.length-1]; // e.g. "2026-10"
@@ -6801,21 +6916,27 @@ function renderDiagList(){
     return;
   }
 
-  diags.sort(function(a,b){return a.date.localeCompare(b.date);});
+  diags.sort(function(a,b){return String(a.date||'').localeCompare(String(b.date||''));});
   for(var k=0;k<diags.length;k++){
-    var d = diags[k];
+    var _raw = diags[k];
+    // نسخة آمنة للعرض — بعض الطلبات تجي من نموذج عام لأولياء الأمور
+    var d = Object.assign({}, _raw, {
+      id:_esc(_raw.id), name:_esc(_raw.name||'—'), phone:_esc(_raw.phone), grade:_esc(_raw.grade),
+      date:_esc(_raw.date), time:_esc(_raw.time)
+    });
     var phone = (d.phone||'').replace(/[^0-9]/g,'');
     var isToday = d.date===today, isTmrw = d.date===tmrwStr;
     var brd = isToday?'2px solid #ef4444':isTmrw?'2px solid #f59e0b':'1px solid var(--brd)';
     var whenTxt = isToday?'اليوم':(isTmrw?'غداً':('بتاريخ '+d.date));
-    var waMsg = encodeURIComponent('السلام عليكم\nتذكير بموعد الاختبار التشخيصي '+whenTxt+' للطالب/ة '+d.name+'\nتاريخ الاختبار: '+d.date+(d.time?' — الساعة '+d.time:'')+'\n\nلوكيشن الأكاديمية:\nسار مبنى جمعية سار الخيرية / خلف المسجد الوسطي\nhttps://maps.app.goo.gl/npa3Per6Bs7vFdQh7?g_st=iw');
+    var waMsg = encodeURIComponent('السلام عليكم\nتذكير بموعد الاختبار التشخيصي '+whenTxt+' للطالب/ة '+_raw.name+'\nتاريخ الاختبار: '+_raw.date+(_raw.time?' — الساعة '+_raw.time:'')+'\n\nلوكيشن الأكاديمية:\nسار مبنى جمعية سار الخيرية / خلف المسجد الوسطي\nhttps://maps.app.goo.gl/npa3Per6Bs7vFdQh7?g_st=iw');
     html += '<div style="background:var(--card);border:'+brd+';border-radius:10px;padding:12px;margin-bottom:6px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">';
-    html += '<div style="width:36px;height:36px;min-width:36px;border-radius:50%;background:#3b82f6;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:15px">'+d.name.charAt(0)+'</div>';
+    html += '<div style="width:36px;height:36px;min-width:36px;border-radius:50%;background:#3b82f6;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:15px">'+_esc(String(_raw.name||'—').charAt(0))+'</div>';
     html += '<div style="flex:1;min-width:160px"><div style="font-weight:800;font-size:13px">'+d.name;
     if(isToday) html += ' <span style="background:#ef4444;color:#fff;font-size:9px;padding:1px 5px;border-radius:20px">اليوم</span>';
     if(isTmrw)  html += ' <span style="background:#f59e0b;color:#fff;font-size:9px;padding:1px 5px;border-radius:20px">غداً</span>';
     html += '</div>';
-    html += '<div style="font-size:11px;color:var(--mu)">📅 '+d.date+(d.grade?' | 🎓 '+d.grade:'')+'</div>';
+    html += '<div style="font-size:11px;color:var(--mu)">📅 '+d.date+(d.time?' | 🕒 '+d.time:'')+(d.grade?' | 🎓 '+d.grade:'')
+      +(_raw.source==='parent'?' <span style="background:#fef3c7;color:#92400e;border-radius:20px;padding:0 6px;font-size:9px;font-weight:700">من رابط ولي الأمر</span>':'')+'</div>';
     html += '<div style="font-size:11px;margin-top:2px"><span style="background:#eff6ff;color:#1d4ed8;border-radius:20px;padding:1px 8px;font-size:10px">'+(d.type==='ld'?'صعوبات تعلم':'عربي')+'</span>';
     html += phone
       ? ' <a href="https://wa.me/973'+phone+'?text='+waMsg+'" target="_blank" style="color:#128C7E;text-decoration:none;font-size:11px;font-weight:700">📱 '+d.phone+'</a>'
@@ -6885,7 +7006,9 @@ function saveDiag(){
     result: prev?prev.result:'',
     status: prev?prev.status:'pending',
     notes: prev?prev.notes:'',
+    time: prev?(prev.time||''):'',
   };
+  if(prev && prev.source) entry.source = prev.source;
   if(idx>=0) diags[idx]=entry; else diags.push(entry);
   set(DIAG_KEY, diags);
   closeMo('mo-diag');
@@ -6895,6 +7018,7 @@ function saveDiag(){
 
 function deleteDiag(id){
   if(!confirm('هل تريد حذف هذا الطالب؟')) return;
+  try{ var _del=_diagDeletedIds(); if(_del.indexOf(id)<0){_del.push(id); localStorage.setItem('bq_diag_deleted', JSON.stringify(_del));} }catch(e){}
   set(DIAG_KEY, get(DIAG_KEY,[]).filter(function(d){return d.id!==id;}));
   renderDiagList();
   toast('تم الحذف');
@@ -6928,21 +7052,24 @@ function convertDiagToStu(){
   endDate.setMonth(endDate.getMonth()+dur);
   endDate.setDate(endDate.getDate()-1);
   var stus = get('students',[]);
-  stus.push({
+  var _safe = function(v){ return String(v==null?'':v).replace(/[<>"'`&]/g,'').trim(); };
+  var newStu = {
     id:'stu_'+Date.now(),
     sid:'STU-'+String(stus.filter(function(s){return !s.archived;}).length+1).padStart(4,'0'),
-    name:d.name, phone:d.phone, group:grpId,
+    name:_safe(d.name), phone:_safe(d.phone), group:grpId,
     start:start, end:endDate.toISOString().split('T')[0],
     subscriptionMonths:dur, fee:fee,
     sched:false, grp_add:false, stationery:false,
-  });
+  };
+  stus.push(newStu);
   set('students', stus);
+  _syncToFinanceSheet(newStu, true); // الطالب المحوّل من الاختبار التشخيصي ينضاف للاكسل أيضًا
   var dIdx = diags.findIndex(function(x){return x.id===diagId;});
   if(dIdx>=0){diags[dIdx].status='registered';}
   set(DIAG_KEY, diags);
   closeMo('mo-diag-convert');
   renderDiagList();
-  toast('✓ تم تسجيل '+d.name+' كطالب نشط');
+  toast('✓ تم تسجيل '+_esc(d.name)+' كطالب نشط');
 }
 </script>
 
