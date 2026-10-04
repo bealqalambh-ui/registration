@@ -2585,11 +2585,21 @@ function openStuMo(id){
     document.getElementById('sf-phone').value=s.phone||'';
     document.getElementById('sf-cls').value=s.cls||'';
     document.getElementById('sf-grp').value=s.group||'';
-    // Show monthly fee if available, else total fee
+    // خانة "الرسوم الإجمالية": للطالب المسجل أكثر من شهر لازم تبين الإجمالي
+    // (مجموع أشهر الاشتراك)، مو مبلغ شهر واحد — وإلا عند الحفظ/التجديد
+    // ينقسم مبلغ الشهر على عدد الأشهر ويطلع مثلاً 7 بدل 20
     const _curMK2=curY+'-'+String(curM+1).padStart(2,'0');
     const _amts2=get('payAmounts',{})[s.id]||{};
-    const _monthFee=_amts2[_curMK2]!==undefined?_amts2[_curMK2]:s.fee;
-    document.getElementById('sf-fee').value=_monthFee||'';
+    const _dur2=s.subscriptionMonths||1;
+    let _feeShow;
+    if(!_isPrvGroup(s.group) && _dur2>1 && s.start){
+      let _sum=0, _all=true;
+      for(let i=0;i<_dur2;i++){ const mk=monthKeyAt(s.start,i); if(_amts2[mk]===undefined){_all=false;break;} _sum+=Number(_amts2[mk])||0; }
+      _feeShow = _all ? _sum : s.fee;
+    } else {
+      _feeShow = _amts2[_curMK2]!==undefined?_amts2[_curMK2]:s.fee;
+    }
+    document.getElementById('sf-fee').value=_feeShow||'';
     document.getElementById('sf-start').value=s.start||'';
     const sfEnd=document.getElementById('sf-end');
     if(sfEnd){sfEnd.value=s.end||'';sfEnd.dataset.manual='0';}
