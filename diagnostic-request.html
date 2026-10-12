@@ -17,6 +17,7 @@
   .fi:focus{outline:none;border-color:#3b82f6;background:#fff}
   select.fi{cursor:pointer}
   .req{color:#ef4444}
+  .hint{font-size:11px;color:#64748b;margin-top:5px}
   .btn{width:100%;padding:13px;border:none;border-radius:10px;background:#3b82f6;color:#fff;font-family:'Cairo',sans-serif;font-size:15px;font-weight:800;cursor:pointer;margin-top:6px}
   .btn:disabled{background:#94a3b8;cursor:not-allowed}
   .msg{text-align:center;padding:14px;border-radius:10px;font-size:14px;font-weight:700;margin-top:14px;display:none}
@@ -55,11 +56,24 @@
     </div>
     <div class="fg">
       <label class="fl">اليوم المناسب للاختبار <span class="req">*</span></label>
-      <input id="f-date" class="fi" type="date" required>
+      <select id="f-date" class="fi" required>
+        <option value="">جارِ تحميل الأيام المتاحة...</option>
+      </select>
+      <div class="hint">لا توجد اختبارات يوم الجمعة — الأيام المكتملة تظهر باللون الرمادي</div>
     </div>
     <div class="fg">
       <label class="fl">الوقت المناسب <span class="req">*</span></label>
-      <input id="f-time" class="fi" type="time" required>
+      <select id="f-time" class="fi" required>
+        <option value="">اختر الوقت</option>
+        <option value="16:00">4:00 مساءً</option>
+        <option value="16:30">4:30 مساءً</option>
+        <option value="17:00">5:00 مساءً</option>
+        <option value="17:30">5:30 مساءً</option>
+        <option value="18:00">6:00 مساءً</option>
+        <option value="18:30">6:30 مساءً</option>
+        <option value="19:00">7:00 مساءً</option>
+      </select>
+      <div class="hint">أوقات الاختبار من 4 إلى 7 مساءً</div>
     </div>
     <button class="btn" type="submit" id="submitBtn">إرسال الطلب</button>
     <div class="msg" id="msg"></div>
@@ -77,21 +91,75 @@ const SB_URL = 'https://kfxdslytyicueybljnsa.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtmeGRzbHl0eWljdWV5YmxqbnNhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzNzkxODgsImV4cCI6MjA5Mzk1NTE4OH0.R-MAI7C1w0XAVt7lU_Ug5jkiH8fKTLQbpapdyPjl0xY';
 const DB_KEY = 'diagnostic'; // same localStorage key the main app uses for this list
 
-async function submitDiagRequest(entry){
-  // 1) اقرأ آخر نسخة محفوظة بالسحابة لهذه القائمة
-  const getRes = await fetch(`${SB_URL}/rest/v1/bealqalam_data?select=key,value&key=eq.${DB_KEY}`, {
-    headers:{ apikey: SB_KEY, Authorization: 'Bearer '+SB_KEY }
+// ── قواعد الحجز ──
+const MAX_PER_DAY = 5;             // أقصى عدد اختبارات باليوم
+const DAYS_AHEAD  = 30;            // نعرض الأيام المتاحة لشهر قدّام
+const ALLOWED_TIMES = ['16:00','16:30','17:00','17:30','18:00','18:30','19:00']; // من 4 إلى 7 مساءً
+const FRIDAY = 5;                  // getDay(): الجمعة = 5
+
+const pad = n => String(n).padStart(2,'0');
+const isoLocal = d => d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+
+async function fetchDiagList(){
+  const res = await fetch(`${SB_URL}/rest/v1/bealqalam_data?select=key,value&key=eq.${DB_KEY}`, {
+    headers:{ apikey: SB_KEY, Authorization: 'Bearer '+SB_KEY }, cache:'no-store'
   });
-  if(!getRes.ok) throw new Error('fetch failed');
-  const rows = await getRes.json();
+  if(!res.ok) throw new Error('fetch failed');
+  const rows = await res.json();
   let list = [];
   try{ list = rows[0]?.value ? JSON.parse(rows[0].value) : []; }catch{ list = []; }
-  if(!Array.isArray(list)) list = [];
+  return Array.isArray(list) ? list : [];
+}
 
-  // 2) ضيف الطلب الجديد
+// كم اختبار محجوز بهذا اليوم (ما نحسب اللي ما حضروا)
+function countOnDay(list, iso){
+  return list.filter(d => d && d.date === iso && d.status !== 'noshow').length;
+}
+
+function dayAllowed(list, iso){
+  const [y,m,dd] = iso.split('-').map(Number);
+  const dt = new Date(y, m-1, dd);
+  if(dt.getDay() === FRIDAY) return 'friday';
+  if(countOnDay(list, iso) >= MAX_PER_DAY) return 'full';
+  return 'ok';
+}
+
+async function loadDays(){
+  const sel = document.getElementById('f-date');
+  try{
+    const list = await fetchDiagList();
+    const opts = ['<option value="">اختر اليوم</option>'];
+    const today = new Date();
+    for(let i=1; i<=DAYS_AHEAD; i++){ // من بكرة
+      const d = new Date(today.getFullYear(), today.getMonth(), today.getDate()+i);
+      if(d.getDay() === FRIDAY) continue; // الجمعة ما تنعرض أصلاً
+      const iso = isoLocal(d);
+      const label = d.toLocaleDateString('ar-BH',{weekday:'long', day:'numeric', month:'long'});
+      const left = MAX_PER_DAY - countOnDay(list, iso);
+      opts.push(left > 0
+        ? `<option value="${iso}">${label}</option>`
+        : `<option value="${iso}" disabled>${label} — مكتمل</option>`);
+    }
+    sel.innerHTML = opts.join('');
+  }catch(e){
+    sel.innerHTML = '<option value="">تعذّر تحميل الأيام — حدّث الصفحة</option>';
+  }
+}
+loadDays();
+
+async function submitDiagRequest(entry){
+  // 1) اقرأ آخر نسخة محفوظة بالسحابة لهذه القائمة
+  const list = await fetchDiagList();
+
+  // 2) تأكد من القواعد مرة ثانية (ممكن اليوم امتلأ وأنت تعبّي النموذج)
+  const ok = dayAllowed(list, entry.date);
+  if(ok !== 'ok') { const e = new Error(ok); e.rule = ok; throw e; }
+  if(!ALLOWED_TIMES.includes(entry.time)) { const e = new Error('time'); e.rule = 'time'; throw e; }
+
+  // 3) ضيف الطلب الجديد
   list.push(entry);
 
-  // 3) ارفع النسخة المحدثة (upsert على نفس الصف)
+  // 4) ارفع النسخة المحدثة (upsert على نفس الصف)
   const putRes = await fetch(`${SB_URL}/rest/v1/bealqalam_data`, {
     method:'POST',
     headers:{
@@ -104,12 +172,6 @@ async function submitDiagRequest(entry){
   });
   if(!putRes.ok) throw new Error('save failed');
 }
-
-// ما نسمح باختيار يوم قبل اليوم
-(function(){
-  const t = new Date(); const pad = n => String(n).padStart(2,'0');
-  document.getElementById('f-date').min = t.getFullYear()+'-'+pad(t.getMonth()+1)+'-'+pad(t.getDate());
-})();
 
 document.getElementById('diagForm').addEventListener('submit', async function(e){
   e.preventDefault();
@@ -151,7 +213,13 @@ document.getElementById('diagForm').addEventListener('submit', async function(e)
     document.getElementById('doneBox').style.display='block';
   }catch(err){
     console.warn(err);
-    msg.textContent = 'حصل خطأ، حاول مرة ثانية أو تواصل معنا مباشرة';
+    const RULE_MSG = {
+      full:   'هذا اليوم اكتمل (5 اختبارات). اختر يوم ثاني من فضلكم',
+      friday: 'لا توجد اختبارات يوم الجمعة. اختر يوم ثاني من فضلكم',
+      time:   'أوقات الاختبار من 4 إلى 7 مساءً فقط'
+    };
+    msg.textContent = RULE_MSG[err.rule] || 'حصل خطأ، حاول مرة ثانية أو تواصل معنا مباشرة';
+    if(err.rule === 'full') loadDays();
     msg.className = 'msg err';
     btn.disabled = false;
     btn.textContent = 'إرسال الطلب';
