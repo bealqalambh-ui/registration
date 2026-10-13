@@ -90,6 +90,8 @@
 const SB_URL = 'https://kfxdslytyicueybljnsa.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtmeGRzbHl0eWljdWV5YmxqbnNhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzNzkxODgsImV4cCI6MjA5Mzk1NTE4OH0.R-MAI7C1w0XAVt7lU_Ug5jkiH8fKTLQbpapdyPjl0xY';
 const DB_KEY = 'diagnostic'; // same localStorage key the main app uses for this list
+// نفس رابط Apps Script حق الاكسل — فيه دالة ترسل إيميل تنبيه عند كل طلب جديد
+const NOTIFY_URL = 'https://script.google.com/macros/s/AKfycbyT1M42vQBKX6K8G1NJaxEQ3s8a_-9hm3iSurWceGSlYxHPGCqol2VTojgcfcxa_MYHSg/exec';
 
 // ── قواعد الحجز ──
 const MAX_PER_DAY = 5;             // أقصى عدد اختبارات باليوم
@@ -209,6 +211,20 @@ document.getElementById('diagForm').addEventListener('submit', async function(e)
 
   try{
     await submitDiagRequest(entry);
+    // تنبيه بالإيميل للأكاديمية (ما ننتظره — لو فشل ما يأثر على التسجيل)
+    try{
+      const dSel = document.getElementById('f-date'), tSel = document.getElementById('f-time');
+      fetch(NOTIFY_URL, {
+        method:'POST', mode:'no-cors', keepalive:true,
+        headers:{'Content-Type':'text/plain;charset=utf-8'},
+        body: JSON.stringify({
+          action:'diagNotify', name: entry.name, phone: entry.phone, grade: entry.grade, type: entry.type,
+          date: entry.date, time: entry.time,
+          dateLabel: dSel.options[dSel.selectedIndex]?.textContent || entry.date,
+          timeLabel: tSel.options[tSel.selectedIndex]?.textContent || entry.time
+        })
+      }).catch(()=>{});
+    }catch(_){}
     document.getElementById('diagForm').style.display='none';
     document.getElementById('doneBox').style.display='block';
   }catch(err){
