@@ -72,6 +72,11 @@
   .slip td.k{color:#64748b;font-weight:700;width:42%;font-size:13px}
   .slip td.v{font-weight:800}
   .slip .pill{display:inline-block;padding:1px 10px;border-radius:20px;font-size:12.5px;font-weight:800}
+  .slip .loc{display:flex;align-items:center;gap:12px;margin-top:10px;background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:12px;padding:10px 12px}
+  .slip .loc img{width:92px;height:92px;flex-shrink:0;border-radius:6px;background:#fff}
+  .slip .loc .lt{font-size:13px;line-height:1.7}
+  .slip .loc .lt b{display:block;font-size:14.5px;color:#0f172a}
+  .slip .loc .lt span{color:#64748b;font-size:12px}
   .slip .note{margin-top:12px;background:#fffbeb;border:1px solid #fde68a;color:#92400e;border-radius:10px;padding:9px 12px;font-size:12.5px;line-height:1.8}
   .slip .ft{border-top:1.5px solid #e2e8f0;margin:0 18px;padding:10px 0 14px;font-size:11px;color:#94a3b8;display:flex;justify-content:space-between;gap:8px}
 </style>
@@ -166,8 +171,9 @@ const ALLOWED_TIMES = [];
 for(let m=FIRST_MIN; m<=LAST_MIN; m+=STEP_MIN) ALLOWED_TIMES.push(String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0'));
 
 // ── معلومات الاستمارة ──
-const LOCATION_TXT = 'سار — مبنى جمعية سار الخيرية / خلف المسجد الوسطي';
-const LOCATION_URL = 'https://maps.app.goo.gl/npa3Per6Bs7vFdQh7?g_st=iw';
+const LOCATION_TXT = 'سار — مبنى رقم 2044';
+const LOCATION_URL = 'https://maps.google.com/?q=26.187761,50.485268';
+const LOCATION_QR  = 'data:image/png;base64,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'; // باركود يفتح اللوكيشن على الخريطة
 const TYPE_LABEL = {arabic:'لغة عربية', ld:'صعوبات تعلم'};
 const MODE_LABEL = {onsite:'حضوري', online:'أونلاين'};
 
@@ -445,7 +451,9 @@ function slipHTML(e){
   const modeColor = e.mode==='online' ? 'background:#f3e8ff;color:#7c3aed' : 'background:#dcfce7;color:#15803d';
   const note = e.mode==='online'
     ? '💻 الاختبار أونلاين — بيوصلكم رابط الاختبار على الواتساب قبل الموعد. نرجو تجهيز جهاز بكاميرا ومكان هادئ للطالب.'
-    : '🏫 الاختبار حضوري — نرجو الحضور قبل الموعد بـ 10 دقائق.<br>📍 '+esc(LOCATION_TXT);
+    : '🏫 الاختبار حضوري — نرجو الحضور قبل الموعد بـ 10 دقائق.';
+  const loc = e.mode==='online' ? '' :
+    `<div class="loc"><img src="${LOCATION_QR}" alt="QR"><div class="lt"><b>📍 ${esc(LOCATION_TXT)}</b><span>قم بتصوير الباركود لفتح موقع (لوكيشن) الأكاديمية</span></div></div>`;
   return `<div class="slip" id="slipCard">
     <div class="hd"><img src="${LOGO}" alt=""><div><div class="n">أكاديمية بالقلم</div><div class="s">استمارة موعد الاختبار التشخيصي</div></div></div>
     <div class="bd">
@@ -463,6 +471,7 @@ function slipHTML(e){
         <tr><td class="k">طريقة الاختبار</td><td class="v"><span class="pill" style="${modeColor}">${esc(MODE_LABEL[e.mode]||'')}</span></td></tr>
       </table>
       <div class="note">${note}</div>
+      ${loc}
     </div>
     <div class="ft"><span>رقم الطلب: ${esc(e.id.replace('diag_','').slice(-6))}</span><span>تاريخ التسجيل: ${new Date().toLocaleDateString('ar-BH-u-nu-latn')}</span></div>
   </div>`;
