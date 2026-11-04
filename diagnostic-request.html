@@ -4,12 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>تسجيل طلب اختبار تشخيصي — بالقلم</title>
-<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:'Cairo',sans-serif;background:linear-gradient(135deg,#eef2ff,#f8fafc);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
-  .card{background:#fff;border-radius:18px;box-shadow:0 10px 40px rgba(0,0,0,.08);max-width:440px;width:100%;padding:28px 24px}
-  .logo{text-align:center;font-size:26px;font-weight:800;color:#3b82f6;margin-bottom:4px}
+  body{font-family:'Cairo',sans-serif;background:linear-gradient(135deg,#eef2ff,#f8fafc);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px 16px}
+  .card{background:#fff;border-radius:18px;box-shadow:0 10px 40px rgba(0,0,0,.08);max-width:460px;width:100%;padding:28px 22px}
+  .logo{text-align:center;margin-bottom:4px}
+  .logo img{width:70px;height:70px;object-fit:contain}
+  .logo b{display:block;font-size:22px;font-weight:900;color:#0f172a;line-height:1.2}
   .sub{text-align:center;font-size:13px;color:#64748b;margin-bottom:20px}
   .fg{margin-bottom:14px}
   .fl{display:block;font-size:13px;font-weight:700;color:#334155;margin-bottom:6px}
@@ -18,71 +21,130 @@
   select.fi{cursor:pointer}
   .req{color:#ef4444}
   .hint{font-size:11px;color:#64748b;margin-top:5px}
-  .btn{width:100%;padding:13px;border:none;border-radius:10px;background:#3b82f6;color:#fff;font-family:'Cairo',sans-serif;font-size:15px;font-weight:800;cursor:pointer;margin-top:6px}
+  .seg{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .seg input{position:absolute;opacity:0;pointer-events:none}
+  .seg label{display:flex;align-items:center;justify-content:center;gap:6px;padding:11px 8px;border:1.5px solid #e2e8f0;border-radius:10px;background:#f8fafc;font-weight:800;font-size:14px;cursor:pointer;transition:.15s;color:#334155}
+  .seg input:checked + label{border-color:#3b82f6;background:#eff6ff;color:#1d4ed8}
+  .seg input:focus-visible + label{outline:2px solid #93c5fd}
+  .paste{background:#f8fafc;border:1.5px dashed #cbd5e1;border-radius:12px;padding:10px;margin-bottom:16px}
+  .paste-t{width:100%;background:none;border:none;font-family:'Cairo',sans-serif;font-size:13.5px;font-weight:800;color:#1d4ed8;cursor:pointer;padding:2px}
+  .paste textarea{margin-top:8px;resize:vertical;min-height:110px;line-height:1.7}
+  .paste .btn{margin-top:8px;padding:10px}
+  .paste-res{font-size:12.5px;line-height:1.8;margin-top:8px;color:#334155}
+  .paste-res b{color:#15803d}
+  .paste-res .miss{color:#b45309}
+  .fi.filled,.seg.filled label{border-color:#10b981}
+  .fi.filled{background:#ecfdf5}
+  .btn{width:100%;padding:13px;border:none;border-radius:10px;background:#3b82f6;color:#fff;font-family:'Cairo',sans-serif;font-size:15px;font-weight:800;cursor:pointer;margin-top:6px;display:flex;align-items:center;justify-content:center;gap:6px}
   .btn:disabled{background:#94a3b8;cursor:not-allowed}
+  .btn.wa{background:#25d366}
+  .btn.dark{background:#0f172a}
+  .btn.ghost{background:#fff;color:#334155;border:1.5px solid #e2e8f0}
   .msg{text-align:center;padding:14px;border-radius:10px;font-size:14px;font-weight:700;margin-top:14px;display:none}
   .msg.ok{background:#dcfce7;color:#15803d;display:block}
   .msg.err{background:#fee2e2;color:#b91c1c;display:block}
-  .done{text-align:center;padding:20px 0}
-  .done .ic{font-size:48px;margin-bottom:10px}
-  .done h2{font-size:18px;color:#15803d;margin-bottom:8px}
-  .done p{font-size:13px;color:#64748b;line-height:1.7}
+
+  /* ── شاشة بعد التسجيل ── */
+  #doneBox{display:none}
+  .done-h{text-align:center;margin-bottom:14px}
+  .done-h .ic{font-size:40px;line-height:1}
+  .done-h h2{font-size:18px;color:#15803d;margin-top:6px}
+  .done-h p{font-size:12.5px;color:#64748b}
+  .acts{display:grid;gap:8px;margin-top:14px}
+
+  /* ── استمارة التأكيد (هذي اللي تنحفظ صورة وتنرسل لولي الأمر) ── */
+  .slip{background:#fff;border:1.5px solid #e2e8f0;border-radius:16px;overflow:hidden;font-family:'Cairo',sans-serif;color:#0f172a}
+  .slip .hd{background:#0f172a;color:#fff;padding:16px 18px;display:flex;align-items:center;gap:12px;position:relative}
+  .slip .hd::after{content:"";position:absolute;left:0;right:0;bottom:-5px;height:5px;background:#f5a623}
+  .slip .hd img{width:54px;height:54px;object-fit:contain;background:#fff;border-radius:12px;padding:4px;flex-shrink:0}
+  .slip .hd .n{font-size:18px;font-weight:900;line-height:1.25}
+  .slip .hd .s{font-size:11.5px;color:#cbd5e1}
+  .slip .bd{padding:20px 18px 14px}
+  .slip .t{font-size:16px;font-weight:900;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+  .slip .t i{display:inline-block;width:6px;height:20px;background:#f5a623;border-radius:3px}
+  .slip .when{background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:12px;padding:10px 12px;text-align:center;margin-bottom:12px}
+  .slip .when .l{font-size:11.5px;color:#1d4ed8;font-weight:800}
+  .slip .when .d{font-size:17px;font-weight:900;line-height:1.5}
+  .slip .when .h{font-size:20px;font-weight:900;color:#1d4ed8;line-height:1.3}
+  .slip table{width:100%;border-collapse:collapse;font-size:14px}
+  .slip td{padding:8px 4px;border-bottom:1px dashed #e2e8f0;vertical-align:top}
+  .slip tr:last-child td{border-bottom:none}
+  .slip td.k{color:#64748b;font-weight:700;width:42%;font-size:13px}
+  .slip td.v{font-weight:800}
+  .slip .pill{display:inline-block;padding:1px 10px;border-radius:20px;font-size:12.5px;font-weight:800}
+  .slip .note{margin-top:12px;background:#fffbeb;border:1px solid #fde68a;color:#92400e;border-radius:10px;padding:9px 12px;font-size:12.5px;line-height:1.8}
+  .slip .ft{border-top:1.5px solid #e2e8f0;margin:0 18px;padding:10px 0 14px;font-size:11px;color:#94a3b8;display:flex;justify-content:space-between;gap:8px}
 </style>
 </head>
 <body>
 <div class="card" id="card">
-  <div class="logo">بالقلم</div>
-  <div class="sub">نموذج تسجيل طلب اختبار تشخيصي</div>
+  <div class="logo"><img src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDAAUDBAQEAwUEBAQFBQUGBwwIBwcHBw8LCwkMEQ8SEhEPERETFhwXExQaFRERGCEYGh0dHx8fExciJCIeJBweHx7/2wBDAQUFBQcGBw4ICA4eFBEUHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAARCAD6AZcDASIAAhEBAxEB/8QAHQABAAICAwEBAAAAAAAAAAAAAAgJBgcDBAUCAf/EAFUQAAEDAgIDBBMNBgUDBQAAAAABAgMEBQYRBwgSITF1shMVFhg1Njc4QVRWYXFyc4GUsbMUIjNRVXSSk6GitNHSCTI0OUKVFyMlU5EkV8FiZYLC4f/EABsBAQACAwEBAAAAAAAAAAAAAAAEBQIDBgEH/8QANREBAAECAgQLBwUBAAAAAAAAAAECAwQRBRUhMQYSFkFRUlNhcaHRExQzNIGRsSIycsHhQv/aAAwDAQACEQMRAD8AmWAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAYPpp0m4f0VYR5ob8k0ySSpDT00GXJJ3qmeSZ7m4iKqqZwVwa7Okrm60rS2m31HJLNYNqlg2VzbJNn/AJsnf3U2U7ze+BP7RzjCzY9wdQYpsMrpKKsZmiOTJ8bk3HMcnYVF3DISC/7PfSVyrxNWaOrnUZUl0zqLdtO3G1DU98xPGamfhb3ydAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGqdajSMzRvokuFwp5Ubda5Fo7e3Pd5I9Fzf/8AFua/8EetAuqnaMbaOKLFeM7reaKvubnTxQ0zmIiQr+65201V2nbrvAqHFpMqptYbWqocG26V0uGMPvcyeRi5sc1ios78973zkRieBPjJt0dPDSUkNLTRtihhYkcbGpkjWomSInmAglrEaAWaFbTZ9IOA7rdanlfXsWpdUuaroHZosb02WpubSbK5/GhMbRDjWh0g6PLTiuhVqJWQpyeNFz5FMm49nmXPzZHq4zw9b8V4UueHLrGklHcaZ8EqfEjk3FTvouSp30Ik6nmIbhoz0vX/AEK4nkWNs1Q91C5+41Zmpn73vPZkqd9AJmgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABqnWsx/Lo80OXO50aubca3Kho3N/ofIi5v8zUcvhyNrEav2iPUVoOF4uI8DsaiejtMK6M34xujGpdMRZTo967sdMn7iZ/+rdcvmNn6HdJ9o0lMxAtsjbEtnuklCreSo9ZWNy2ZdzeR27l4qlZ1u0iY6t2GZcM0OLLvT2eVqtfRsqXJGrV30y7Cd5Do4QxZiXCFydccMXuutNU5uw6SmlViub8S/H5wLPsZaUbNhnSnhbAVU1jqq/tlXkqzI3kGyn+Wip2dtUVENDa+eC6u1Vtj0w4dX3PcLbPHDVyM3FRUdnDJ38lRW+dCGV7xBfL3e33y73asrbm96PWqmlV0maby7W+mR6mKtION8VW+C34jxTdbpSU6JyKGoqHOY3Le3OyvhAtG0Q4xgx9o3smLaeNY/d9MjpI1/okRVa9vgRyOMHxnrK6K8I4ouGG71cbjFcLfKsU7WUD3tR2We4qbi741Luttwt4tR+IkIM61nXDYz4RXitAmfz2+hf5Wun9tkNw4OxLasWYVocTWaSWS3V0XJoHSRqxytzVN1q7qbxUAWj6rvW64R4N/wDs4DG6zWw0OUlXNSzXW6JLDI6N6JbpFyVFyX1HG3W20MOcjUu10VVXJP8ATZCvLFXTPdfns3HU6NN/ER+OnrAuLgrYJrYy4sc73O+FJ2qqbuyrdre8BpKXWx0MxSvifeLkjmOVq/6dJvp5jbNr6n9LwUz2SFRtz6JVXln8ZQLGodbHQzNMyJl4uSve5GtTldJvquXxG7aysgpLbNcJnKkEMLpnqiZqjUTNdzwIU82jotR+XZxkLc8U9Id14Lm9koGol1tNC6KqLebluf8At0n5HLR61uhurq4aWG8XFZZpGxsRbdImblXJOx3ytyT4R3hU9DCvTPavnsPHQC4YAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAI1ftEeorQcLxcR5JUjV+0R6itBwvFxHgV+AAAbyxDoQtts1X7XpYZeaqS41kjFfSqxvIkjc9zEROzmmznn3zRpM7HX8uzD3gg9u8Dc+pd1tuFvFqPxEhHbT3q5aVsWaYcS4isllpJrdXViy08jq6Jiubkm7kq5pvEidS7rbcLeLUfiJDE9JWtlhzBGOrthOrwpdKqe2TrC+aOdiNeuSLmiLu9kCNPOoaau5+i/uMP6idegvDl1wrobw9hu9QMhuVFRcinjbIj0a7NVy2k3F3zRHPu4U7irz6RGOfdwp3FXn0iMDTF91V9M1XfK+qhsFEsU1TJIxVuESZtVyqn9R1YdVHTUyVjlw/RZI5FX/AFGH9RvHn3cKdxV59IjPpmu3hR72tTBV5zVUT+IjAkvT08tJguOknajZYbckb0Rc8nNjyX7UKiLn0SqvLP4ylvslU2uwu6uYxWNqKJZUau+iOZnl9pUFc+iVV5Z/GUD9tHRaj8uzjIW54p6Q7rwXN7JSoy0dFqPy7OMhbninpDuvBc3slAqEk+Ed4VPQwr0z2r57Dx0PPk+Ed4VPQwr0z2r57Dx0AuGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcVXURUsDp53bLG765HQ5oLV2z91RinoJP5vWYMctpvTeIwF+LduImJjPbn0z3rLB4Oi9RxqplnPNBau2fuqOaC1ds/dUwYFNyrxnVp+0+qVq210yznmgtXbP3VHNBau2fuqYMByrxnVp+0+pq210yznmgtXbP3VHNBau2fuqYMByrxnVp+0+pq210yznmgtXbP3VHNBau2fuqYMByrxnVp+0+pq210yznmgtXbP3VHNBau2fuqYMByrxnVp+0+pq210yznmgtXbP3VI5ftA7pRVuhqhjp5ttyXeNcslT+h5tQ0PrvdSei4UZxHEzR/CPFYnE0Wq4pymeifVqv4C3btzVEzsQsAB2yoCZ2Ov5dmHvBB7d5DEmbjr+Xbh7wQe3eBujUu623C3i1H4iQgzrWdcNjPhFeK0nNqXdbbhbxaj8RIQZ1rOuGxnwivFaBrAAkdo51TsR40wHa8W0uK7VSwXGn5OyGSGRXMTNUyVU3OwBHE5Kb+Ij8dPWclypXUNxqaJ7ke6nmfErk3lVqqmf2HHTfxEfjp6wLd7X1P6XgpnskKjbn0SqvLP4yluVr6n9LwUz2SFRtz6JVXln8ZQP20dFqPy7OMhbninpDuvBc3slKjLR0Wo/Ls4yFueKekO68FzeyUCoST4R3hU9DCvTPavnsPHQ8+T4R3hU9DCvTPavnsPHQC4YAAAAAAAAAAAAAAAAAAAAAAAAAAAAB5eKegk/m9ZgxnOKegk/m9Zgx8+4V/OU/wAY/MrzRvwp8QAHMLENCaetO140c44bh+hslDWwrSsn5JM9yOzdnubngN9kJtdfqxM4Nh9bi70BhbWJxfEuxnGUoeNuVW7WdM5S97ns8S9y1p+seOezxL3LWn6x5G8Hbai0f2cefqqPfb/WSQ57PEvctafrHjns8S9y1p+seRvA1Fo/s48/U99v9ZJDns8S9y1p+seOezxL3LWn6x5G8DUWj+zjz9T32/1kkWa2WJXPRvMtad1cvhHmda5VQ6s0J2ere1GunrIJVam8iuiVcvtIbw/Cs8ZCYOt31BMPeXpfYFXi8Bh8JjcN7GnLOZz8ki1fuXbNzjznsQ7AB1atCZuO/wCXbh3wQe3eQyJm47/l24d8EHt3gbo1Luttwt4tR+IkIM61nXDYz4RXitJzal3W24W8Wo/ESEGdazrhsZ8IrxWgawJFaO9a/FOC8C2vCdHhq0VNPboOQMllfIj3Jmq5rkuXZI6gDsXKqdXXGprXtRrqiV8rmpvIrlVcvtOOm/iI/HT1nGclN/ER+OnrAt3tfU/peCmeyQqNufRKq8s/jKW5Wvqf0vBTPZIVG3PolVeWfxlA/bR0Wo/Ls4yFueKekO68FzeyUqMtHRaj8uzjIW54p6Q7rwXN7JQKhJPhHeFT0MK9M9q+ew8dDz5PhHeFT0MK9M9q+ew8dALb8bXaWw4NvV8giZNLb6CeqZG9cmuVjFciL3lyIXc+5i3uNs310hL/AEvdSnFvAtX7FxUgBMjBGuJii/4xtFjmwlaIY6+sip3yMmkVWo5yIqp/yTQKk9DvVWwtwrT+0QtsAAAAAAAAAAAAAAAAAAAAAAAAA8vFPQSfzeswYznFPQSfzeswY+fcK/nKf4x+ZXmjfhT4gAOYWIQm11+rEzg2H1uJskJtdfqxM4Nh9bjouC/z30n+kDSPwfq0ab+0C6CLNpFwPzQV98r6KX3U+HkcMbFbk3Ld3fCaBJu6lXUdXhGb/wAHV6fxV3DYTj2qspzhW4G3Tcu5VRnCI+lDDkGEsf3nDdLUSVMNBUciZLIiI5yZIua5bnZMaNgaxnVvxX8+XitNflnhK6q7FFVW+Yj8I12IiuYjpSZ0Xat1gxdgCzYkqsR3KmmuFPyV8UcTFa1dpUyTPd7BHC7UzaK61dGxyubBO+JHLvqjXKmf2Gw8L6ddI+GsP0ditN1poqGij5HAx1HG5WtzVd9UzXfNb1c8lVVTVUyossz3SPVEyzVVzUiYGzjKLtycRXE0zP6e7f3R3Nt6q1VTTFEZTzvmH4VnjITB1u+oJh7y9L7Ah41Va5FTfRczOcb6V8Z4yw3S4evtbTzUFK5jomMpmsVFY3ZTdRM13DzHYO5fxFm5TllRMzL2zdpoorpnnYKAC0Rgmbjv+Xbh3wQe3eQyM5uGljG9fozptHNTcoX4cptnkVOlMxHJsuVye/y2t9V7IE/NS7rbcLeLUfiJDFNJOqbhrG+OrtiusxVdqWe5TrM+GKGNWsXJEyRV3ewRMwLrC6UcFYWo8M4evNLT22jRyQxvoonqm05XL75UzXdcp7nPX6a+6Gj/ALdD+kDe3OR4R7tL39REfMmpJhFsbnc2d73EVfgIjRfPX6a+6Gj/ALdD+k/Ha12mpUVFxDR5LudDof0gaYvFK2hu9ZRMcr20874kcu+qNcqZ/YcFN/ER+OnrP2sqJaurmqp1R0s0jpHqiZZuVc19ZxtcrXI5N9FzQC3q19T+l4KZ7JCo259Eqryz+MpuKHWj0yRW5lAy/wBGlOyFIWt5Xw/uomzlns/EaXmkdLK+V65ue5XO8Kgc9o6LUfl2cZC3PFPSHdeC5vZKVGWjotR+XZxkLc8U9Id14Lm9koFQknwjvCp6GFeme1fPYeOh58nwjvCp90dRLSVcNVAqNlhkbIxVTPJyLmgFtWl7qU4t4Fq/YuKkDdF61ntMF4tFbaq+/UclJWwPp52Jb4mq5j2q1yIqN3NxVNLgZZod6q2FuFaf2iFthUnod6q2FuFaf2iFtgAAAAAAAAAAAAAAAAAAAAAAAAHl4p6CT+b1mDGc4p6CT+b1mDHz7hX85T/GPzK80b8KfEABzCxCE2uv1YmcGw+txNk1/j/Q9gbHN9S9Yho6yasSJsO1FVLG3ZbnluInfLbQuOt4LE+1uZ5ZTGxFxdmq9b4tKvQm7qVdR1eEZv8Awd3nbNFPybc/T3fkbBwBg2xYGsXKXD0M8VHyV0uzLKsjtpd/dLfTWnMNjcN7K3E55xO2P9RcJg7lm5xqkFNYzq34r+fLxWmvyfuKdBGjnEuIa2/Xagr5K6tk5JM5lYrWq7LLcTLc3jzOds0U/Jtz9Pd+RYYbhLg7VmiiqKs4iI3RzR4tFzR92quZjJBUE6uds0U/Jtz9Pd+Q52zRT8m3P0935G7lTguir7R6sNW3u5BUE6uds0U/Jtz9Pd+RqvWd0Q4IwJgGmu+HKOshq5K5sLnS1SyJsq1yruKneQ34bhFhMRdptUROc93+sbmBu0UzVOWxGkAF8hABJDFOiTBdv1P7RpKpqWrTENUkXJJVqFWNdqVzV95vbyIBG8E2dW3V10ZY40M2HE9/oLhJcqxsqzOjrHMauzK9qZIm9uIhsXnSNDXyZdfT3AVwgse50jQ18mXX09w50jQ18mXX09wFcILHudI0NfJl19PcOdI0NfJl19PcBXCCx7nSNDXyZdfT3DnSNDXyZdfT3AV12jotR+XZxkLc8U9Id14Lm9kpqKHVM0OQzMmZbboj2ORzf+vdvouZvCto4Ku2zW+ZFWCaF0L0Rcl2VTJd3wKBTjJ8I7wqfJY8uqToaVc+Vl19PcOdI0NfJl19PcBXCCx7nSNDXyZdfT3DnSNDXyZdfT3AQN0O9VbC3CtP7RC2w0jYtVvRJZbzR3eht1zbVUczZ4VdXOVEc1c0zTs7qG7gAAAAAAAAAAAAAAAAAAAAAAAAPOxHFJNaJo4o3SPXLJrUzXfMP5WXHtKf6BsEFHpLQdrH3YuV1TGUZbEzD4yqxTxYhr7lZce0p/oDlZce0p/oGwQV/JKx2k+TfrOvqw19ysuPaU/0BysuPaU/0DYIHJKx2k+RrOvqw19ysuPaU/0BysuPaU/0DYIHJKx2k+RrOvqw19ysuPaU/wBAcrLj2lP9A2CBySsdpPkazr6sNfcrLj2lP9AcrLj2lP8AQNggckrHaT5Gs6+rDX3Ky49pT/QNB681HV0+iSifPTyRt5aRpm5uX9DiXpGr9oj1FaDheLiPJGE4NWcNepu01zMxOfMwu6QruUTTMb1fgPYt2FcTXKkbV2/Dt2q6d+ezLBRyPY7wKiZHZ5h8adyV9/t8v6TpFex4kJibTJhe46o1n0ZQRViX6llYyVHR/wCUjGyOft7XZz2kTI05zD407kr7/b5f0nSu+Hb/AGiBs91slyoInu2WvqaV8bVX4kVyJugWQ6l3W24W8Wo/ESG4zTmpd1tuFvFqPxEhuMDzLzcpKCenjayJWzI/3z3ZZbLczgbeKmWeKKKmia6WmSdrZJMlVc8tnwnZu1vlrKqmmZLE1INv3r49rNXJl8Z1YLLPTzRSQ1Ubljp+QtWWJXKm7ntb5Q4jWHvFXEz4mcZft3ZRnv7802j2HEjPf9e//HcmuPI7vDRLH7yRFTkme87LNG/8HxRXJ0sFbPPG1jKWR7F2VVc9nfU4Z7PNKrZVqI0qW1CSpJyNd5NzLLM+oLVUMZUQyVMToamZ0kqNjVFVHb7UXMzivSHtZzpnLOct3PGyJ8J2z4vMrHF37fq+6O5yST0sc8DY0q41fErXZ5ZbuS9/JT5juzpEr0bC1HUzdtmbvhG5Lu97eU6tLQ1fu1sMzsvccKspZNj3rtpMtpd3fTeyOVbJIyTbgqIo9qlWCRORqu1n/Vvmmi7pCqmJpiZymc90TuiPKrOfDLezmmxE7f76fR3oK1z7PHXPYiOfEkiMReyqbifadGe9yMtENe2mau0/YlZtfuZLk7w5ZHJHbatKWnpZKqF0ELWNVqRqm0jfPv7xxsssrEmiSeL3PJM6TY5Gvvc0yVEXPzmy7VpGqmIoiY/Tl/z+7Zt8Ob67mNMWImc55+/d0OxR3J1Td56NkTUiiYjkk2t12fePSPKtNpfQVSSpUNkYkDYlRWrmuS5555989UsMBOIm1M4jZVnPRu5tzRf4nG/RuY5pQqqmh0a4mraOeSnqYLTVSwyxuycx7YnKjkXsKioVkf40aWf+4mJPT3/mWY6XupTi3gWr9i4qQJrS3Fot0uaT7hpIw5RVuPcQ1FNPcoI5Yn1z1a9qvRFRUz3UUs2Kk9DvVWwtwrT+0QtsAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEav2iPUVoOF4uI8kqa51i9GyaU9GVZhqKpbS1rZG1NFK/8AdSVueSO7yoqp5wNLaKotZ5ujXDiYYdgZtlW2wLQpKqo/kSsTZ2sm/vZb/fzMm2Nbv/cwF9J36TUOELHrd4Cs7MMWGmnW20jlSBipBOxiKueTHO3dnNd49jltrpdpP9FpfyA2Nsa3f+5gL6Tv0mtNZiLWEXRHcV0hOwc6wtliWT3GqrNt7XvdjNN/P7Mzl5ba6XaT/RaX8jwsV4D1p9LDqPD+MmOgtjZkkcsywwwsXe23IzdcqIq5Ju94CROpd1tuFvFqPxEhuMxvRhhGjwJgGz4ToZFlht1OkSyKmSyP33Py7GblVfOZIAAAAAAAAAAAAAAcFwpKa4UFRQ1sLJ6aojdFNE9M2vY5MlaveVFMD/wP0SdwNk+p/wD02GAMDt+hvRdb66CuosD2eCpp5EkikZDk5jkXNFTd3zPAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/9k=" alt=""><b>أكاديمية بالقلم</b></div>
+  <div class="sub" id="subTitle">نموذج تسجيل طلب اختبار تشخيصي</div>
 
-  <form id="diagForm">
+  <form id="diagForm" novalidate>
+    <div class="paste">
+      <button type="button" class="paste-t" id="pasteToggle">📋 عندك المعلومات برسالة؟ الصقها هني ونوزعها لك</button>
+      <div id="pasteBox" hidden>
+        <textarea id="pasteTxt" class="fi" placeholder="الصق رسالة ولي الأمر هني، مثال:&#10;الاسم: سارة أحمد&#10;الصف الثالث&#10;33445566&#10;صعوبات تعلم — حضوري&#10;الأحد الساعة 4:15"></textarea>
+        <button type="button" class="btn dark" id="pasteBtn">✨ وزّع المعلومات على الخانات</button>
+        <div class="paste-res" id="pasteRes"></div>
+      </div>
+    </div>
     <div class="fg">
-      <label class="fl">اسم الطالب <span class="req">*</span></label>
+      <label class="fl" for="f-name">اسم الطالب <span class="req">*</span></label>
       <input id="f-name" class="fi" required placeholder="الاسم الكامل">
     </div>
     <div class="fg">
-      <label class="fl">الصف</label>
-      <input id="f-grade" class="fi" placeholder="مثال: الصف الثالث">
+      <label class="fl" for="f-grade">الصف أو العمر</label>
+      <input id="f-grade" class="fi" placeholder="مثال: الصف الثالث / 8 سنوات">
     </div>
     <div class="fg">
-      <label class="fl">رقم التواصل (واتساب) <span class="req">*</span></label>
-      <input id="f-phone" class="fi" type="tel" required placeholder="3XXXXXXX">
+      <label class="fl" for="f-phone">رقم ولي الأمر (واتساب) <span class="req">*</span></label>
+      <input id="f-phone" class="fi" type="tel" inputmode="tel" required placeholder="3XXXXXXX">
     </div>
     <div class="fg">
-      <label class="fl">نوع الاختبار <span class="req">*</span></label>
+      <label class="fl" for="f-type">نوع الاختبار <span class="req">*</span></label>
       <select id="f-type" class="fi" required>
         <option value="arabic">لغة عربية</option>
         <option value="ld">صعوبات تعلم</option>
       </select>
     </div>
     <div class="fg">
-      <label class="fl">اليوم المناسب للاختبار <span class="req">*</span></label>
+      <span class="fl">طريقة الاختبار <span class="req">*</span></span>
+      <div class="seg" role="radiogroup">
+        <input type="radio" name="mode" id="m-onsite" value="onsite" checked><label for="m-onsite">🏫 حضوري</label>
+        <input type="radio" name="mode" id="m-online" value="online"><label for="m-online">💻 أونلاين</label>
+      </div>
+    </div>
+    <div class="fg">
+      <label class="fl" for="f-date">اليوم المناسب للاختبار <span class="req">*</span></label>
       <select id="f-date" class="fi" required>
         <option value="">جارِ تحميل الأيام المتاحة...</option>
       </select>
       <div class="hint">لا توجد اختبارات يوم الجمعة — الأيام المكتملة تظهر باللون الرمادي</div>
     </div>
     <div class="fg">
-      <label class="fl">الوقت المناسب <span class="req">*</span></label>
-      <select id="f-time" class="fi" required>
-        <option value="">اختر الوقت</option>
-        <option value="16:00">4:00 مساءً</option>
-        <option value="16:30">4:30 مساءً</option>
-        <option value="17:00">5:00 مساءً</option>
-        <option value="17:30">5:30 مساءً</option>
-        <option value="18:00">6:00 مساءً</option>
-        <option value="18:30">6:30 مساءً</option>
-        <option value="19:00">7:00 مساءً</option>
-      </select>
-      <div class="hint">أوقات الاختبار من 4 إلى 7 مساءً</div>
+      <label class="fl" for="f-time">الوقت المناسب <span class="req">*</span></label>
+      <select id="f-time" class="fi" required></select>
+      <div class="hint">أوقات الاختبار من 4:00 إلى 7:00 مساءً</div>
     </div>
     <button class="btn" type="submit" id="submitBtn">إرسال الطلب</button>
     <div class="msg" id="msg"></div>
   </form>
 
-  <div class="done" id="doneBox" style="display:none">
-    <div class="ic">✅</div>
-    <h2>تم إرسال طلبكم بنجاح</h2>
-    <p>شكرًا لكم. سيتم التواصل معكم من أكاديمية بالقلم لتأكيد موعد الاختبار التشخيصي.</p>
+  <div id="doneBox">
+    <div class="done-h">
+      <div class="ic">✅</div>
+      <h2>تم التسجيل بنجاح</h2>
+      <p>هذي استمارة الموعد — احفظها أو أرسلها لولي الأمر</p>
+    </div>
+    <div id="slip"></div>
+    <div class="acts">
+      <button class="btn wa" id="btnSend" type="button">📲 إرسال لولي الأمر على الواتساب</button>
+      <button class="btn dark" id="btnSave" type="button">⬇️ حفظ الاستمارة كصورة</button>
+      <button class="btn ghost" id="btnNew" type="button">➕ تسجيل طالب جديد</button>
+    </div>
+    <div class="msg" id="doneMsg"></div>
   </div>
 </div>
 
@@ -92,15 +154,32 @@ const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 const DB_KEY = 'diagnostic'; // same localStorage key the main app uses for this list
 // نفس رابط Apps Script حق الاكسل — فيه دالة ترسل إيميل تنبيه عند كل طلب جديد
 const NOTIFY_URL = 'https://script.google.com/macros/s/AKfycbyT1M42vQBKX6K8G1NJaxEQ3s8a_-9hm3iSurWceGSlYxHPGCqol2VTojgcfcxa_MYHSg/exec';
+const LOGO = document.querySelector('.logo img').src;
 
 // ── قواعد الحجز ──
 const MAX_PER_DAY = 5;             // أقصى عدد اختبارات باليوم
 const DAYS_AHEAD  = 30;            // نعرض الأيام المتاحة لشهر قدّام
-const ALLOWED_TIMES = ['16:00','16:30','17:00','17:30','18:00','18:30','19:00']; // من 4 إلى 7 مساءً
 const FRIDAY = 5;                  // getDay(): الجمعة = 5
+// الأوقات: من 4:00 إلى 7:00 مساءً كل ربع ساعة
+const FIRST_MIN = 16*60, LAST_MIN = 19*60, STEP_MIN = 15;
+const ALLOWED_TIMES = [];
+for(let m=FIRST_MIN; m<=LAST_MIN; m+=STEP_MIN) ALLOWED_TIMES.push(String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0'));
+
+// ── معلومات الاستمارة ──
+const LOCATION_TXT = 'سار — مبنى جمعية سار الخيرية / خلف المسجد الوسطي';
+const LOCATION_URL = 'https://maps.app.goo.gl/npa3Per6Bs7vFdQh7?g_st=iw';
+const TYPE_LABEL = {arabic:'لغة عربية', ld:'صعوبات تعلم'};
+const MODE_LABEL = {onsite:'حضوري', online:'أونلاين'};
 
 const pad = n => String(n).padStart(2,'0');
 const isoLocal = d => d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const esc = s => String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function timeLabel(t){const [h,m]=t.split(':').map(Number);return (h>12?h-12:h)+':'+pad(m)+' مساءً';}
+function dateLabel(iso){const [y,m,d]=iso.split('-').map(Number);return new Date(y,m-1,d).toLocaleDateString('ar-BH-u-nu-latn',{weekday:'long',day:'numeric',month:'long',year:'numeric'});}
+
+// قائمة الأوقات
+document.getElementById('f-time').innerHTML = '<option value="">اختر الوقت</option>' +
+  ALLOWED_TIMES.map(t=>`<option value="${t}">${timeLabel(t)}</option>`).join('');
 
 async function fetchDiagList(){
   const res = await fetch(`${SB_URL}/rest/v1/bealqalam_data?select=key,value&key=eq.${DB_KEY}`, {
@@ -136,7 +215,7 @@ async function loadDays(){
       const d = new Date(today.getFullYear(), today.getMonth(), today.getDate()+i);
       if(d.getDay() === FRIDAY) continue; // الجمعة ما تنعرض أصلاً
       const iso = isoLocal(d);
-      const label = d.toLocaleDateString('ar-BH',{weekday:'long', day:'numeric', month:'long'});
+      const label = d.toLocaleDateString('ar-BH-u-nu-latn',{weekday:'long', day:'numeric', month:'long'});
       const left = MAX_PER_DAY - countOnDay(list, iso);
       opts.push(left > 0
         ? `<option value="${iso}">${label}</option>`
@@ -147,7 +226,171 @@ async function loadDays(){
     sel.innerHTML = '<option value="">تعذّر تحميل الأيام — حدّث الصفحة</option>';
   }
 }
-loadDays();
+const DAYS_READY = loadDays();
+// ═══ لصق المعلومات: يقرأ رسالة (واتساب مثلاً) ويوزعها على الخانات ═══
+function parseInfo(raw, today){
+  today = today || new Date();
+  const AR = '٠١٢٣٤٥٦٧٨٩', FA = '۰۱۲۳۴۵۶۷۸۹';
+  let txt = String(raw||'')
+    .replace(/[٠-٩]/g, d => AR.indexOf(d)).replace(/[۰-۹]/g, d => FA.indexOf(d))
+    .replace(/[‎‏‪-‮]/g,'').replace(/\r/g,'').replace(/[٫]/g,':');
+  const norm = s => s.replace(/[أإآ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه');
+  const lines = txt.split(/\n+|[،,؛;]/).map(l => l.replace(/^[\s\-–•*·▪✓✔👤🎓📞📱📝📍📅🕒⏰☎️]+/u,'').trim()).filter(Boolean);
+  const out = {};
+  const used = new Set();
+
+  // قيمة بعد عنوان: "الاسم: ..." أو "اسم الطالب - ..."
+  const LABELS = {
+    name:  /^(اسم\s*(الطالب|الطالبه|الطفل|الابن|البنت|الولد)?|الاسم|الطالب|الطالبه)\s*[:：\-–=]\s*(.+)$/,
+    grade: /^(الصف|صف|المرحله|الصف الدراسي|العمر|عمره|عمرها|السن)\s*(او العمر|\/\s*العمر)?\s*[:：\-–=]\s*(.+)$/,
+    phone: /^(رقم|الرقم|رقم التواصل|رقم ولي الامر|الهاتف|الجوال|التلفون|واتساب|الواتساب|موبايل)[^:：\-–=]*[:：\-–=]\s*(.+)$/,
+  };
+  lines.forEach((l,i) => {
+    const n = norm(l);
+    for (const k in LABELS){
+      const m = n.match(LABELS[k]);
+      if (m && !out[k]){
+        // نرجع النص الأصلي (بالهمزات) من نفس الموقع
+        const val = l.slice(l.length - m[m.length-1].length).trim();
+        out[k] = val; used.add(i); break;
+      }
+    }
+  });
+
+  const all = norm(txt);
+
+  // ── الرقم ──
+  const phoneSrc = out.phone || txt;
+  const pm = phoneSrc.replace(/[\s\-()]/g,'').match(/(?:\+?973|00973)?([13679]\d{7})(?!\d)/);
+  if (pm) out.phone = pm[1]; else if (out.phone && !/\d{7,}/.test(out.phone.replace(/\D/g,''))) delete out.phone;
+  if (pm) lines.forEach((l,i)=>{ if (l.replace(/[\s\-()]/g,'').includes(pm[1])) used.add(i); });
+
+  // ── نوع الاختبار ──
+  if (/صعوبات|صعوبه|تعلم/.test(all)) out.type = 'ld';
+  else if (/عربي|لغه/.test(all)) out.type = 'arabic';
+
+  // ── حضوري / أونلاين ──
+  if (/اونلاين|اون لاين|online|عن بعد|زوم|zoom|اونلين/i.test(all)) out.mode = 'online';
+  else if (/حضوري|حضور|بالاكاديميه|بالمركز/.test(all)) out.mode = 'onsite';
+
+  // ── الوقت (4:00–7:00 كل ربع ساعة) ──
+  let mins = null;
+  let tm = all.match(/(?:^|[^\d/])(\d{1,2})\s*[:.]\s*(\d{2})(?!\s*[/\-]\d)/);
+  if (tm) mins = (+tm[1])*60 + (+tm[2]);
+  else {
+    tm = all.match(/(?:الساعه|ساعه|الساعة)\s*(\d{1,2})\s*(و\s*نص|ونص|و\s*ربع|وربع|الا\s*ربع|الا ربع)?/) ||
+         all.match(/(?:^|\s)(\d{1,2})\s*(و\s*نص|ونص|و\s*ربع|وربع|الا\s*ربع)?\s*(?:العصر|عصرا|عصر|المغرب|مساء|مساءا|م)(?:\s|$)/);
+    if (tm){
+      mins = (+tm[1])*60;
+      const q = (tm[2]||'').replace(/\s/g,'');
+      if (q==='ونص') mins += 30; else if (q==='وربع') mins += 15; else if (q==='الاربع') mins -= 15;
+    }
+  }
+  if (mins !== null){
+    if (mins < 12*60) mins += 12*60;          // 4:15 = 16:15
+    mins = Math.round(mins/15)*15;
+    if (mins >= 16*60 && mins <= 19*60) out.time = String(Math.floor(mins/60)).padStart(2,'0')+':'+String(mins%60).padStart(2,'0');
+    else out.timeOutOfRange = true;
+  }
+
+  // ── اليوم ──
+  const iso = d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  const base = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const MONTHS = {'يناير':1,'فبراير':2,'مارس':3,'ابريل':4,'مايو':5,'يونيو':6,'يوليو':7,'اغسطس':8,'سبتمبر':9,'اكتوبر':10,'نوفمبر':11,'ديسمبر':12,
+    'كانون الثاني':1,'شباط':2,'اذار':3,'نيسان':4,'ايار':5,'حزيران':6,'تموز':7,'اب':8,'ايلول':9,'تشرين الاول':10,'تشرين الثاني':11,'كانون الاول':12};
+  let dt = null;
+  let dm = all.match(/(?:^|[^\d:])(\d{1,2})\s*[\/\-.]\s*(\d{1,2})(?:\s*[\/\-.]\s*(\d{2,4}))?(?![\d:])/);
+  if (dm){
+    let y = dm[3] ? (+dm[3] < 100 ? 2000 + (+dm[3]) : +dm[3]) : base.getFullYear();
+    dt = new Date(y, (+dm[2])-1, +dm[1]);
+    if (!dm[3] && dt < base) dt.setFullYear(y+1);
+  } else {
+    const mn = Object.keys(MONTHS).sort((a,b)=>b.length-a.length).find(k => all.includes(k));
+    const dn = mn && all.match(new RegExp('(\\d{1,2})\\s*(?:من\\s*)?(?:شهر\\s*)?'+mn+'(?:\\s*(\\d{4}))?'));
+    if (dn){
+      dt = new Date(dn[2] ? +dn[2] : base.getFullYear(), MONTHS[mn]-1, +dn[1]);
+      if (!dn[2] && dt < base) dt.setFullYear(base.getFullYear()+1);
+    } else {
+      const m2 = all.match(/(?:شهر|الشهر)\s*(\d{1,2})\s*(?:يوم|تاريخ)?\s*(\d{1,2})?/);
+      if (/بكره|بكرا|غدا|باجر/.test(all)) dt = new Date(base.getTime()+86400000);
+      else if (/عقب بكره|بعد بكره|بعد غد/.test(all)) dt = new Date(base.getTime()+2*86400000);
+      else {
+        const DAYS = [['الاحد',0],['الاثنين',1],['الإثنين',1],['الثلاثاء',2],['الثلاثا',2],['الاربعاء',3],['الاربعا',3],['الخميس',4],['السبت',6],['احد',0],['اثنين',1],['ثلاثاء',2],['اربعاء',3],['خميس',4],['سبت',6]];
+        const hit = DAYS.find(([k]) => all.includes(norm(k)));
+        if (hit){
+          let diff = (hit[1] - base.getDay() + 7) % 7; if (diff === 0) diff = 7;
+          dt = new Date(base.getTime() + diff*86400000);
+        }
+      }
+    }
+  }
+  if (dt && !isNaN(dt)) out.date = iso(dt);
+
+  // ── الصف / العمر ──
+  if (!out.grade){
+    const gm = txt.match(/((?:ال)?صف\s+(?:ال)?[؀-ۿ]+(?:\s+(?:ابتدائي|إعدادي|اعدادي|ثانوي|متوسط))?|(?:ال)?(?:أول|اول|ثاني|ثالث|رابع|خامس|سادس)\s+(?:ابتدائي|إعدادي|اعدادي|ثانوي)|(?:عمره|عمرها|العمر)?\s*\d{1,2}\s*(?:سنوات|سنين|سنه|سنة|سنا))/);
+    if (gm) out.grade = gm[1].trim();
+  }
+  if (out.grade) out.grade = out.grade.replace(/[،,.:؛]+$/,'').trim();
+  if (out.grade) lines.forEach((l,i)=>{ if (l.includes(out.grade)) used.add(i); });
+
+  // ── الاسم: أول سطر "نظيف" ما فيه رقم ولا كلمات معروفة ──
+  if (!out.name){
+    const STOP = /صف|سن|عمر|رقم|اختبار|صعوب|عربي|لغه|حضور|اونلاين|online|زوم|السلام|مرحبا|هلا|الساعه|يوم|بكره|تاريخ|موعد|ابي|ابغي|نبي|ودي|لو سمحت|شكرا|الاحد|الاثنين|الثلاثاء|الاربعاء|الخميس|السبت|الجمعه|عصر|مساء|تسجيل|ولدي|بنتي|ابني/;
+    for (let i=0;i<lines.length;i++){
+      if (used.has(i)) continue;
+      const l = lines[i], n = norm(l);
+      if (/\d/.test(l) || STOP.test(n)) continue;
+      const words = l.split(/\s+/);
+      if (words.length >= 1 && words.length <= 6 && /^[؀-ۿ\s]+$/.test(l)) { out.name = l; break; }
+    }
+  }
+  if (out.name) out.name = out.name.replace(/[،,.:]+$/,'').trim();
+  return out;
+}
+
+// ── زر "وزّع المعلومات" ──
+const MODE_SEG = () => document.querySelector('.seg');
+function flashFilled(el){ if(!el) return; el.classList.add('filled'); }
+['f-name','f-grade','f-phone','f-type','f-date','f-time'].forEach(id=>{
+  const el=document.getElementById(id); el.addEventListener('input',()=>el.classList.remove('filled')); el.addEventListener('change',()=>el.classList.remove('filled'));
+});
+document.querySelectorAll('input[name="mode"]').forEach(r=>r.addEventListener('change',()=>MODE_SEG().classList.remove('filled')));
+
+async function applyPaste(){
+  const raw=document.getElementById('pasteTxt').value;
+  const res=document.getElementById('pasteRes');
+  if(!raw.trim()){ res.innerHTML='<span class="miss">الصق الرسالة أول</span>'; return; }
+  try{ await DAYS_READY; }catch(_){}
+  const r=parseInfo(raw,new Date());
+  const got=[], miss=[], warn=[];
+  const setV=(id,v,label)=>{ const el=document.getElementById(id); el.value=v; flashFilled(el); got.push(label); };
+  if(r.name)  setV('f-name',r.name,'الاسم'); else miss.push('الاسم');
+  if(r.grade) setV('f-grade',r.grade,'الصف/العمر'); else miss.push('الصف/العمر');
+  if(r.phone) setV('f-phone',r.phone,'الرقم'); else miss.push('الرقم');
+  if(r.type)  setV('f-type',r.type,'نوع الاختبار'); else miss.push('نوع الاختبار');
+  if(r.mode){ document.getElementById(r.mode==='online'?'m-online':'m-onsite').checked=true; MODE_SEG().classList.add('filled'); got.push('حضوري/أونلاين'); }
+  else miss.push('حضوري/أونلاين');
+  if(r.date){
+    const opt=document.querySelector('#f-date option[value="'+r.date+'"]');
+    if(opt && !opt.disabled) setV('f-date',r.date,'اليوم');
+    else if(opt && opt.disabled) warn.push('اليوم المطلوب ('+dateLabel(r.date)+') مكتمل — اختر يوم ثاني');
+    else warn.push('اليوم المكتوب ('+dateLabel(r.date)+') مو متاح (فات، أو جمعة، أو بعيد) — اختر يوم من القائمة');
+  } else miss.push('اليوم');
+  if(r.time) setV('f-time',r.time,'الوقت');
+  else if(r.timeOutOfRange) warn.push('الوقت المكتوب برا 4:00–7:00 — اختر وقت من القائمة');
+  else miss.push('الوقت');
+  res.innerHTML =
+    (got.length?'<b>✓ تعبّت: '+got.join('، ')+'</b>':'')+
+    (miss.length?'<div class="miss">✎ ما لقيتها بالرسالة، عبّها بنفسك: '+miss.join('، ')+'</div>':'')+
+    warn.map(w=>'<div class="miss">⚠ '+esc(w)+'</div>').join('')+
+    (got.length?'<div style="color:#64748b">راجع الخانات الخضرا قبل الإرسال</div>':'');
+}
+document.getElementById('pasteToggle').addEventListener('click',()=>{
+  const b=document.getElementById('pasteBox'); b.hidden=!b.hidden; if(!b.hidden) document.getElementById('pasteTxt').focus();
+});
+document.getElementById('pasteBtn').addEventListener('click',applyPaste);
+document.getElementById('pasteTxt').addEventListener('paste',()=>setTimeout(applyPaste,30));
 
 async function submitDiagRequest(entry){
   // 1) اقرأ آخر نسخة محفوظة بالسحابة لهذه القائمة
@@ -175,6 +418,104 @@ async function submitDiagRequest(entry){
   if(!putRes.ok) throw new Error('save failed');
 }
 
+// ═══ استمارة التأكيد ═══
+let LAST = null; // آخر تسجيل
+
+function slipHTML(e){
+  const modeColor = e.mode==='online' ? 'background:#f3e8ff;color:#7c3aed' : 'background:#dcfce7;color:#15803d';
+  const note = e.mode==='online'
+    ? '💻 الاختبار أونلاين — بيوصلكم رابط الاختبار على الواتساب قبل الموعد. نرجو تجهيز جهاز بكاميرا ومكان هادئ للطالب.'
+    : '🏫 الاختبار حضوري — نرجو الحضور قبل الموعد بـ 10 دقائق.<br>📍 '+esc(LOCATION_TXT);
+  return `<div class="slip" id="slipCard">
+    <div class="hd"><img src="${LOGO}" alt=""><div><div class="n">أكاديمية بالقلم</div><div class="s">استمارة موعد الاختبار التشخيصي</div></div></div>
+    <div class="bd">
+      <div class="t"><i></i>تأكيد موعد الاختبار</div>
+      <div class="when">
+        <div class="l">موعد الاختبار</div>
+        <div class="d">${esc(dateLabel(e.date))}</div>
+        <div class="h">الساعة ${esc(timeLabel(e.time))}</div>
+      </div>
+      <table>
+        <tr><td class="k">اسم الطالب</td><td class="v">${esc(e.name)}</td></tr>
+        <tr><td class="k">الصف / العمر</td><td class="v">${esc(e.grade||'—')}</td></tr>
+        <tr><td class="k">رقم ولي الأمر</td><td class="v" dir="ltr" style="text-align:right">${esc(e.phone)}</td></tr>
+        <tr><td class="k">نوع الاختبار</td><td class="v">${esc(TYPE_LABEL[e.type]||'')}</td></tr>
+        <tr><td class="k">طريقة الاختبار</td><td class="v"><span class="pill" style="${modeColor}">${esc(MODE_LABEL[e.mode]||'')}</span></td></tr>
+      </table>
+      <div class="note">${note}</div>
+    </div>
+    <div class="ft"><span>رقم الطلب: ${esc(e.id.replace('diag_','').slice(-6))}</span><span>تاريخ التسجيل: ${new Date().toLocaleDateString('ar-BH-u-nu-latn')}</span></div>
+  </div>`;
+}
+
+function waText(e){
+  return 'السلام عليكم ورحمة الله 🌷\n'
+    + 'تم تأكيد موعد الاختبار التشخيصي في أكاديمية بالقلم:\n\n'
+    + '👤 اسم الطالب: ' + e.name + '\n'
+    + (e.grade ? '🎓 الصف / العمر: ' + e.grade + '\n' : '')
+    + '📞 رقم ولي الأمر: ' + e.phone + '\n'
+    + '📝 نوع الاختبار: ' + (TYPE_LABEL[e.type]||'') + '\n'
+    + '📍 طريقة الاختبار: ' + (MODE_LABEL[e.mode]||'') + '\n'
+    + '📅 الموعد: ' + dateLabel(e.date) + ' — الساعة ' + timeLabel(e.time) + '\n'
+    + (e.mode==='online'
+        ? '\nبيوصلكم رابط الاختبار على الواتساب قبل الموعد.'
+        : '\nلوكيشن الأكاديمية:\n' + LOCATION_TXT + '\n' + LOCATION_URL);
+}
+function waNumber(p){let x=String(p||'').replace(/\D/g,'');if(x.startsWith('00'))x=x.slice(2);if(x.length===8)x='973'+x;return x;}
+
+async function slipImage(){
+  try{ if(document.fonts && document.fonts.ready) await document.fonts.ready; }catch(_){}
+  const el = document.getElementById('slipCard');
+  const canvas = await html2canvas(el, {scale:3, backgroundColor:'#ffffff', useCORS:true});
+  const blob = await new Promise(r=>canvas.toBlob(r,'image/png'));
+  return {blob, name:'موعد الاختبار - '+LAST.name+'.png'};
+}
+function downloadBlob(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},4000);}
+function doneMsg(t,err){const m=document.getElementById('doneMsg');m.textContent=t;m.className='msg '+(err?'err':'ok');}
+
+document.getElementById('btnSave').addEventListener('click', async function(){
+  this.disabled=true;
+  try{ const {blob,name}=await slipImage(); downloadBlob(blob,name); doneMsg('✓ تم حفظ الصورة'); }
+  catch(e){ console.warn(e); doneMsg('ما قدرت أحفظ الصورة — خذ سكرين شوت للاستمارة',true); }
+  finally{ this.disabled=false; }
+});
+
+document.getElementById('btnSend').addEventListener('click', async function(){
+  this.disabled=true;
+  const text = waText(LAST);
+  try{
+    // بالجوال: نرسل صورة الاستمارة نفسها مع النص
+    let shared=false;
+    try{
+      const {blob,name}=await slipImage();
+      const file=new File([blob],name,{type:'image/png'});
+      if(navigator.canShare && navigator.canShare({files:[file]})){
+        await navigator.share({files:[file], text});
+        shared=true; doneMsg('✓ تم');
+      }
+    }catch(e){ if(e && e.name==='AbortError'){ shared=true; } }
+    // بالكمبيوتر: نفتح محادثة ولي الأمر بالواتساب والرسالة مكتوبة جاهزة
+    if(!shared){
+      window.open('https://wa.me/'+waNumber(LAST.phone)+'?text='+encodeURIComponent(text),'_blank');
+      doneMsg('✓ انفتح الواتساب والرسالة جاهزة — لو تبي ترسل الصورة بعد، اضغط "حفظ الاستمارة كصورة" وأرفقها');
+    }
+  }finally{ this.disabled=false; }
+});
+
+document.getElementById('btnNew').addEventListener('click', function(){
+  document.getElementById('diagForm').reset();
+  document.getElementById('pasteRes').innerHTML='';
+  document.querySelectorAll('.filled').forEach(e=>e.classList.remove('filled'));
+  document.getElementById('msg').className='msg';
+  document.getElementById('doneMsg').className='msg';
+  document.getElementById('doneBox').style.display='none';
+  document.getElementById('diagForm').style.display='block';
+  document.getElementById('subTitle').style.display='block';
+  const btn=document.getElementById('submitBtn'); btn.disabled=false; btn.textContent='إرسال الطلب';
+  loadDays();
+  window.scrollTo({top:0,behavior:'smooth'});
+});
+
 document.getElementById('diagForm').addEventListener('submit', async function(e){
   e.preventDefault();
   const btn = document.getElementById('submitBtn');
@@ -185,10 +526,11 @@ document.getElementById('diagForm').addEventListener('submit', async function(e)
   const grade = document.getElementById('f-grade').value.trim();
   const phone = document.getElementById('f-phone').value.trim();
   const type  = document.getElementById('f-type').value;
+  const mode  = (document.querySelector('input[name="mode"]:checked')||{}).value;
   const date  = document.getElementById('f-date').value;
   const time  = document.getElementById('f-time').value;
 
-  if(!name || !phone || !date || !time){
+  if(!name || !phone || !date || !time || !mode){
     msg.textContent = 'عبوا الحقول المطلوبة من فضلكم';
     msg.className = 'msg err';
     return;
@@ -204,8 +546,9 @@ document.getElementById('diagForm').addEventListener('submit', async function(e)
     phone: clean(phone,20).replace(/[^0-9+ ]/g,''),
     grade: clean(grade,40),
     date, time, type: type==='ld' ? 'ld' : 'arabic',
+    mode: mode==='online' ? 'online' : 'onsite',
     result:'', status:'pending',
-    notes:'تم التسجيل عبر رابط ولي الأمر',
+    notes:'تم التسجيل عبر رابط ولي الأمر — الاختبار '+(mode==='online'?'أونلاين':'حضوري'),
     source:'parent'
   };
 
@@ -213,26 +556,30 @@ document.getElementById('diagForm').addEventListener('submit', async function(e)
     await submitDiagRequest(entry);
     // تنبيه بالإيميل للأكاديمية (ما ننتظره — لو فشل ما يأثر على التسجيل)
     try{
-      const dSel = document.getElementById('f-date'), tSel = document.getElementById('f-time');
       fetch(NOTIFY_URL, {
         method:'POST', mode:'no-cors', keepalive:true,
         headers:{'Content-Type':'text/plain;charset=utf-8'},
         body: JSON.stringify({
           action:'diagNotify', name: entry.name, phone: entry.phone, grade: entry.grade, type: entry.type,
+          mode: entry.mode,
           date: entry.date, time: entry.time,
-          dateLabel: dSel.options[dSel.selectedIndex]?.textContent || entry.date,
-          timeLabel: tSel.options[tSel.selectedIndex]?.textContent || entry.time
+          dateLabel: dateLabel(entry.date),
+          timeLabel: timeLabel(entry.time) + ' — ' + MODE_LABEL[entry.mode]
         })
       }).catch(()=>{});
     }catch(_){}
+    LAST = entry;
+    document.getElementById('slip').innerHTML = slipHTML(entry);
     document.getElementById('diagForm').style.display='none';
+    document.getElementById('subTitle').style.display='none';
     document.getElementById('doneBox').style.display='block';
+    window.scrollTo({top:0,behavior:'smooth'});
   }catch(err){
     console.warn(err);
     const RULE_MSG = {
       full:   'هذا اليوم اكتمل (5 اختبارات). اختر يوم ثاني من فضلكم',
       friday: 'لا توجد اختبارات يوم الجمعة. اختر يوم ثاني من فضلكم',
-      time:   'أوقات الاختبار من 4 إلى 7 مساءً فقط'
+      time:   'أوقات الاختبار من 4:00 إلى 7:00 مساءً فقط'
     };
     msg.textContent = RULE_MSG[err.rule] || 'حصل خطأ، حاول مرة ثانية أو تواصل معنا مباشرة';
     if(err.rule === 'full') loadDays();

@@ -1671,6 +1671,7 @@ function _cleanDiagEntry(d){
     date: /^\d{4}-\d{2}-\d{2}$/.test(d.date) ? d.date : new Date().toISOString().split('T')[0],
     time: /^\d{2}:\d{2}$/.test(d.time) ? d.time : '',
     type: d.type==='ld' ? 'ld' : 'arabic',
+    mode: d.mode==='online' ? 'online' : (d.mode==='onsite' ? 'onsite' : ''),
     result:'', status:'pending', notes: clean(d.notes,200), source:'parent'
   };
 }
@@ -2576,6 +2577,7 @@ function toggleField(id,field,val){
 // ═══════════════════════════
 function openStuMo(id){
   editStuId=id||null;
+  window._pendingDiagConvert=null; // يرجع يتعبى بس لو الفتح جاي من "تسجيل ←" بالاختبار التشخيصي
   fillGrpSels();
   const stus=get('students',[]);
   const s=id?stus.find(x=>x.id===id):null;
@@ -2709,6 +2711,15 @@ function saveStu(){
   // Save the core student record FIRST and unconditionally — this must never
   // be blocked by an error in the (more fragile) per-month breakdown logic below.
   set('students',stus);
+  // لو هالطالب جاي من قائمة الاختبار التشخيصي: نعلّم الطلب إنه "سجّل"
+  if(_isNewStu && window._pendingDiagConvert){
+    try{
+      const _dl=get(DIAG_KEY,[]); const _di=_dl.findIndex(x=>x.id===window._pendingDiagConvert);
+      if(_di>=0){ _dl[_di].status='registered'; _dl[_di].stuId=obj.id; set(DIAG_KEY,_dl); }
+    }catch(e){ console.warn('diag mark registered failed',e); }
+    window._pendingDiagConvert=null;
+    setTimeout(()=>{ try{ renderDiagList(); }catch(e){} },50);
+  }
   // مزامنة الاكسل (تنتظر ثانية ونص — بعد ما تنحفظ المبالغ وحالة الدفع تحت)
   _queueFinanceSync(obj.id);
   // Save per-month fees AND paid status
@@ -6938,7 +6949,7 @@ function renderDiagList(){
     var isToday = d.date===today, isTmrw = d.date===tmrwStr;
     var brd = isToday?'2px solid #ef4444':isTmrw?'2px solid #f59e0b':'1px solid var(--brd)';
     var whenTxt = isToday?'اليوم':(isTmrw?'غداً':('بتاريخ '+d.date));
-    var waMsg = encodeURIComponent('السلام عليكم\nتذكير بموعد الاختبار التشخيصي '+whenTxt+' للطالب/ة '+_raw.name+'\nتاريخ الاختبار: '+_raw.date+(_raw.time?' — الساعة '+_raw.time:'')+'\n\nلوكيشن الأكاديمية:\nسار مبنى جمعية سار الخيرية / خلف المسجد الوسطي\nhttps://maps.app.goo.gl/npa3Per6Bs7vFdQh7?g_st=iw');
+    var waMsg = encodeURIComponent('السلام عليكم\nتذكير بموعد الاختبار التشخيصي '+whenTxt+' للطالب/ة '+_raw.name+'\nتاريخ الاختبار: '+_raw.date+(_raw.time?' — الساعة '+_raw.time:'')+(_raw.mode==='online'?'\nالاختبار أونلاين — بيوصلكم رابط الاختبار على الواتساب قبل الموعد.':'\n\nلوكيشن الأكاديمية:\nسار مبنى جمعية سار الخيرية / خلف المسجد الوسطي\nhttps://maps.app.goo.gl/npa3Per6Bs7vFdQh7?g_st=iw'));
     html += '<div style="background:var(--card);border:'+brd+';border-radius:10px;padding:12px;margin-bottom:6px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">';
     html += '<div style="width:36px;height:36px;min-width:36px;border-radius:50%;background:#3b82f6;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:15px">'+_esc(String(_raw.name||'—').charAt(0))+'</div>';
     html += '<div style="flex:1;min-width:160px"><div style="font-weight:800;font-size:13px">'+d.name;
@@ -6947,7 +6958,9 @@ function renderDiagList(){
     html += '</div>';
     html += '<div style="font-size:11px;color:var(--mu)">📅 '+d.date+(d.time?' | 🕒 '+d.time:'')+(d.grade?' | 🎓 '+d.grade:'')
       +(_raw.source==='parent'?' <span style="background:#fef3c7;color:#92400e;border-radius:20px;padding:0 6px;font-size:9px;font-weight:700">من رابط ولي الأمر</span>':'')+'</div>';
-    html += '<div style="font-size:11px;margin-top:2px"><span style="background:#eff6ff;color:#1d4ed8;border-radius:20px;padding:1px 8px;font-size:10px">'+(d.type==='ld'?'صعوبات تعلم':'عربي')+'</span>';
+    html += '<div style="font-size:11px;margin-top:2px"><span style="background:#eff6ff;color:#1d4ed8;border-radius:20px;padding:1px 8px;font-size:10px">'+(d.type==='ld'?'صعوبات تعلم':'عربي')+'</span>'
+      +(_raw.mode==='online'?' <span style="background:#f3e8ff;color:#7c3aed;border-radius:20px;padding:1px 8px;font-size:10px;font-weight:700">💻 أونلاين</span>'
+        :_raw.mode==='onsite'?' <span style="background:#dcfce7;color:#15803d;border-radius:20px;padding:1px 8px;font-size:10px;font-weight:700">🏫 حضوري</span>':'');
     html += phone
       ? ' <a href="https://wa.me/973'+phone+'?text='+waMsg+'" target="_blank" style="color:#128C7E;text-decoration:none;font-size:11px;font-weight:700">📱 '+d.phone+'</a>'
       : ' <span style="color:var(--li);font-size:11px">📵 لا يوجد رقم تواصل</span>';
@@ -7035,17 +7048,23 @@ function deleteDiag(id){
 }
 
 function openDiagConvert(diagId){
+  // نفتح نموذج "إضافة طالب" الكامل ومعبّى بمعلومات الاختبار التشخيصي،
+  // عشان الموظف ما يعيد كتابة شي — بس يختار المجموعة والأشهر والرسوم والدفع
   var d = get(DIAG_KEY,[]).find(function(x){return x.id===diagId;});
   if(!d) return;
-  window._convertDiagId = diagId;
-  document.getElementById('diag-conv-name').textContent = d.name+(d.result?' — المستوى: '+d.result:'');
-  document.getElementById('diag-conv-start').value = new Date().toISOString().split('T')[0];
-  document.getElementById('diag-conv-fee').value = '';
-  var grps = get('groups',[]);
-  document.getElementById('diag-conv-grp').innerHTML =
-    '<option value="">— اختر المجموعة —</option>'
-    +grps.map(function(g){return '<option value="'+g.id+'">'+g.name+'</option>';}).join('');
-  openMo('mo-diag-convert');
+  openStuMo(null);
+  window._pendingDiagConvert = diagId;
+  document.getElementById('mo-stu-ttl').textContent = 'تسجيل طالب من الاختبار التشخيصي';
+  document.getElementById('sf-name').value  = d.name  || '';
+  document.getElementById('sf-phone').value = d.phone || '';
+  document.getElementById('sf-cls').value   = d.grade || '';
+  document.getElementById('sf-start').value = new Date().toISOString().split('T')[0];
+  var _typ  = d.type==='ld' ? 'صعوبات تعلم' : 'لغة عربية';
+  var _mode = d.mode==='online' ? ' (أونلاين)' : (d.mode==='onsite' ? ' (حضوري)' : '');
+  document.getElementById('sf-notes').value =
+    'اختبار تشخيصي: ' + _typ + _mode + ' — بتاريخ ' + (d.date||'') + (d.result ? ' — المستوى: ' + d.result : '');
+  try{ updateMonthlyFees(); }catch(e){}
+  setTimeout(function(){ var g=document.getElementById('sf-grp'); if(g) g.focus(); }, 80);
 }
 
 function convertDiagToStu(){
