@@ -178,8 +178,23 @@ function timeLabel(t){const [h,m]=t.split(':').map(Number);return (h>12?h-12:h)+
 function dateLabel(iso){const [y,m,d]=iso.split('-').map(Number);return new Date(y,m-1,d).toLocaleDateString('ar-BH-u-nu-latn',{weekday:'long',day:'numeric',month:'long',year:'numeric'});}
 
 // قائمة الأوقات
-document.getElementById('f-time').innerHTML = '<option value="">اختر الوقت</option>' +
-  ALLOWED_TIMES.map(t=>`<option value="${t}">${timeLabel(t)}</option>`).join('');
+// الأوقات اللي فاتت اليوم (نخلي ربع ساعة فرق على الأقل)
+function timePassedToday(dateIso, t){
+  const now=new Date();
+  if(dateIso!==isoLocal(now)) return false;
+  const [h,m]=t.split(':').map(Number);
+  return h*60+m < now.getHours()*60+now.getMinutes()+15;
+}
+function renderTimes(){
+  const sel=document.getElementById('f-time'), date=document.getElementById('f-date').value, keep=sel.value;
+  sel.innerHTML = '<option value="">اختر الوقت</option>' + ALLOWED_TIMES.map(t=>{
+    const past=timePassedToday(date,t);
+    return `<option value="${t}"${past?' disabled':''}>${timeLabel(t)}${past?' — فات':''}</option>`;
+  }).join('');
+  if(keep && !timePassedToday(date,keep)) sel.value=keep;
+}
+renderTimes();
+document.getElementById('f-date').addEventListener('change',renderTimes);
 
 async function fetchDiagList(){
   const res = await fetch(`${SB_URL}/rest/v1/bealqalam_data?select=key,value&key=eq.${DB_KEY}`, {
@@ -211,11 +226,13 @@ async function loadDays(){
     const list = await fetchDiagList();
     const opts = ['<option value="">اختر اليوم</option>'];
     const today = new Date();
-    for(let i=1; i<=DAYS_AHEAD; i++){ // من بكرة
+    for(let i=0; i<=DAYS_AHEAD; i++){ // من اليوم
       const d = new Date(today.getFullYear(), today.getMonth(), today.getDate()+i);
       if(d.getDay() === FRIDAY) continue; // الجمعة ما تنعرض أصلاً
+      // اليوم نفسه: نعرضه بس إذا باقي وقت متاح فيه
+      if(i===0 && ALLOWED_TIMES.every(t=>timePassedToday(isoLocal(d),t))) continue;
       const iso = isoLocal(d);
-      const label = d.toLocaleDateString('ar-BH-u-nu-latn',{weekday:'long', day:'numeric', month:'long'});
+      const label = (i===0?'اليوم — ':i===1?'بكرة — ':'') + d.toLocaleDateString('ar-BH-u-nu-latn',{weekday:'long', day:'numeric', month:'long'});
       const left = MAX_PER_DAY - countOnDay(list, iso);
       opts.push(left > 0
         ? `<option value="${iso}">${label}</option>`
@@ -312,7 +329,8 @@ function parseInfo(raw, today){
       if (!dn[2] && dt < base) dt.setFullYear(base.getFullYear()+1);
     } else {
       const m2 = all.match(/(?:شهر|الشهر)\s*(\d{1,2})\s*(?:يوم|تاريخ)?\s*(\d{1,2})?/);
-      if (/بكره|بكرا|غدا|باجر/.test(all)) dt = new Date(base.getTime()+86400000);
+      if (/(^|\s)(اليوم|الحين|هاليوم)(\s|$)/.test(all) && !/(اليوم|يوم) (المناسب|الاختبار)/.test(all)) dt = new Date(base.getTime());
+      else if (/بكره|بكرا|غدا|باجر/.test(all)) dt = new Date(base.getTime()+86400000);
       else if (/عقب بكره|بعد بكره|بعد غد/.test(all)) dt = new Date(base.getTime()+2*86400000);
       else {
         const DAYS = [['الاحد',0],['الاثنين',1],['الإثنين',1],['الثلاثاء',2],['الثلاثا',2],['الاربعاء',3],['الاربعا',3],['الخميس',4],['السبت',6],['احد',0],['اثنين',1],['ثلاثاء',2],['اربعاء',3],['خميس',4],['سبت',6]];
@@ -373,11 +391,12 @@ async function applyPaste(){
   else miss.push('حضوري/أونلاين');
   if(r.date){
     const opt=document.querySelector('#f-date option[value="'+r.date+'"]');
-    if(opt && !opt.disabled) setV('f-date',r.date,'اليوم');
+    if(opt && !opt.disabled){ setV('f-date',r.date,'اليوم'); renderTimes(); }
     else if(opt && opt.disabled) warn.push('اليوم المطلوب ('+dateLabel(r.date)+') مكتمل — اختر يوم ثاني');
     else warn.push('اليوم المكتوب ('+dateLabel(r.date)+') مو متاح (فات، أو جمعة، أو بعيد) — اختر يوم من القائمة');
   } else miss.push('اليوم');
-  if(r.time) setV('f-time',r.time,'الوقت');
+  if(r.time && timePassedToday(document.getElementById('f-date').value, r.time)) warn.push('الوقت المكتوب فات اليوم — اختر وقت بعده');
+  else if(r.time) setV('f-time',r.time,'الوقت');
   else if(r.timeOutOfRange) warn.push('الوقت المكتوب برا 4:00–7:00 — اختر وقت من القائمة');
   else miss.push('الوقت');
   res.innerHTML =
@@ -400,6 +419,7 @@ async function submitDiagRequest(entry){
   const ok = dayAllowed(list, entry.date);
   if(ok !== 'ok') { const e = new Error(ok); e.rule = ok; throw e; }
   if(!ALLOWED_TIMES.includes(entry.time)) { const e = new Error('time'); e.rule = 'time'; throw e; }
+  if(timePassedToday(entry.date, entry.time)) { const e = new Error('past'); e.rule = 'past'; throw e; }
 
   // 3) ضيف الطلب الجديد
   list.push(entry);
@@ -579,7 +599,8 @@ document.getElementById('diagForm').addEventListener('submit', async function(e)
     const RULE_MSG = {
       full:   'هذا اليوم اكتمل (5 اختبارات). اختر يوم ثاني من فضلكم',
       friday: 'لا توجد اختبارات يوم الجمعة. اختر يوم ثاني من فضلكم',
-      time:   'أوقات الاختبار من 4:00 إلى 7:00 مساءً فقط'
+      time:   'أوقات الاختبار من 4:00 إلى 7:00 مساءً فقط',
+      past:   'هالوقت فات اليوم، اختر وقت بعده'
     };
     msg.textContent = RULE_MSG[err.rule] || 'حصل خطأ، حاول مرة ثانية أو تواصل معنا مباشرة';
     if(err.rule === 'full') loadDays();
