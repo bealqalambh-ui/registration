@@ -624,6 +624,7 @@ tr:hover td{background:var(--bg)}
         <button class="mc" onclick="closeMo('mo-rcpt')">✕</button>
       </div>
     </div>
+    <div id="rcpt-cover" style="padding:10px 14px;border-bottom:1px solid var(--brd);background:var(--bg)"></div>
     <div class="mb" style="padding:0" id="rcpt-content">
       <!-- injected dynamically -->
     </div>
@@ -2268,7 +2269,7 @@ function setTheme(dark,btn){
 // ═══════════════════════════
 function toggleNp(){document.getElementById('np').classList.toggle('open');}
 document.addEventListener('click',e=>{if(!e.target.closest('.ibtn')&&!e.target.closest('.np'))document.getElementById('np').classList.remove('open');});
-function closeMo(id){document.getElementById(id).classList.remove('open');}
+function closeMo(id){const el=document.getElementById(id); if(el) el.classList.remove('open');}
 // modal click-outside handled below
 
 function renderNp(){
@@ -3220,6 +3221,77 @@ async function sendRcptWhatsapp(){
   }
 }
 
+// ══ الرصيد: هذا الدفع يغطي الحصص من تاريخ إلى تاريخ ══
+function _isoUTC(d){ return d.toISOString().slice(0,10); }
+function _parseUTC(iso){ const [y,m,d]=iso.split('-').map(Number); return new Date(Date.UTC(y,m-1,d)); }
+function _mkAdd(mk,k){ const [y,m]=mk.split('-').map(Number); const d=new Date(Date.UTC(y,m-1+k,1)); return d.getUTCFullYear()+'-'+String(d.getUTCMonth()+1).padStart(2,'0'); }
+function _mkDiff(a,b){ const [ay,am]=a.split('-').map(Number), [by,bm]=b.split('-').map(Number); return (by-ay)*12+(bm-am); }
+function _nSess(n){ return n===1?'حصة وحدة':n===2?'حصتين':(n>=3&&n<=10)?n+' حصص':n+' حصة'; }
+function _mkLabel(mk){ const [y,m]=mk.split('-').map(Number); return MONTH_NAMES[m-1]+' '+y; }
+// أيام الأسبوع اللي عند الطالب حصص فيها (0=الأحد … 6=السبت)
+function _stuWeekdaySet(s,g){
+  const set_=new Set();
+  if(s.prvSched && Object.keys(s.prvSched).length){ Object.keys(s.prvSched).forEach(k=>set_.add(Number(k))); return set_; }
+  if(!g) return set_;
+  const slots=get('schedule',[]).filter(sc=>sc.grpId===g.id);
+  if(slots.length){ slots.forEach(sc=>set_.add(Number(sc.day))); return set_; }
+  if(g.days){ DAY_NAMES.forEach((dn,idx)=>{ if(g.days.indexOf(dn)!==-1) set_.add(idx); }); }
+  return set_;
+}
+function _isPrvStu(s,g){ return g?.type==='private' || !!(g?.name||'').includes('خصوصي'); }
+// تواريخ الحصص اللي يغطيها دفع شهر معيّن
+//  • المجموعات: حصص الشهر نفسه (من أول حصة لآخر حصة فيه) ضمن فترة الاشتراك
+//  • الخصوصي: باقة (عدد حصص الطالب) تبدأ بنفس يوم بداية باقته بذاك الشهر
+//  — والحالتين تتخطى الإجازات الرسمية
+function _coverForMonth(s,g,mk){
+  const wset=_stuWeekdaySet(s,g);
+  const hols=get(HOL_KEY,[]);
+  const isHol=iso=>hols.some(h=>iso>=h.start&&iso<=h.end);
+  const dates=[];
+  if(_isPrvStu(s,g) && s.start && wset.size){
+    const total=s.totalSessions||s.monthlySessionCount||0;
+    const [sy,sm,sd]=s.start.split('-').map(Number);
+    const k=_mkDiff(s.start.slice(0,7),mk);
+    const first=new Date(Date.UTC(sy,sm-1+k,1));
+    const lastDay=new Date(Date.UTC(first.getUTCFullYear(),first.getUTCMonth()+1,0)).getUTCDate();
+    const cur=new Date(Date.UTC(first.getUTCFullYear(),first.getUTCMonth(),Math.min(sd,lastDay)));
+    for(let n=0; n<400 && total && dates.length<total; n++){
+      const iso=_isoUTC(cur);
+      if(wset.has(cur.getUTCDay()) && !isHol(iso)) dates.push(iso);
+      cur.setUTCDate(cur.getUTCDate()+1);
+    }
+  } else if(wset.size){
+    const [y,m]=mk.split('-').map(Number);
+    let from=mk+'-01', to=_isoUTC(new Date(Date.UTC(y,m,0)));
+    const walk=(a,b)=>{ const out=[]; const c=_parseUTC(a), e=_parseUTC(b);
+      while(c<=e){ const iso=_isoUTC(c); if(wset.has(c.getUTCDay()) && !isHol(iso)) out.push(iso); c.setUTCDate(c.getUTCDate()+1); } return out; };
+    let a=from, b=to;
+    if(s.start && s.start>a) a=s.start;
+    if(s.end && s.end<b) b=s.end;
+    let list = a<=b ? walk(a,b) : [];
+    if(!list.length) list=walk(from,to); // الشهر برا فترة الاشتراك: نعرض حصص الشهر كامل
+    dates.push(...list);
+  }
+  return {mk, from:dates[0]||'', to:dates[dates.length-1]||'', n:dates.length};
+}
+function _monthAmount(s,g,mk){
+  const amts=(get('payAmounts',{})[s.id])||{};
+  if(amts[mk]!==undefined) return Number(amts[mk])||0;
+  const dur=s.subscriptionMonths||1;
+  return (!_isPrvStu(s,g) && dur>1) ? Math.round((s.fee||0)/dur) : (s.fee||0);
+}
+// الأشهر اللي تطلع كخيارات: الشهر الحالي واللي قبله، وأي شهر مدفوع قريب
+function _rcptCoverOptions(s,g){
+  const now=new Date();
+  const curMk=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+  const pays=(get('pays',{})[s.id])||{};
+  const set_=new Set([_mkAdd(curMk,-1), curMk]);
+  Object.keys(pays).forEach(mk=>{ if(pays[mk] && _mkDiff(mk,curMk)<=3 && _mkDiff(curMk,mk)<=2) set_.add(mk); });
+  if(_isPrvStu(s,g) && s.start) set_.add(s.start.slice(0,7));
+  return [...set_].sort().map(mk=>{ const c=_coverForMonth(s,g,mk); c.amt=_monthAmount(s,g,mk); c.paid=!!pays[mk]; return c; });
+}
+
+let _rcptState = null;
 function openRcpt(stuId){
   _currentRcptStuId = stuId;
   const stus=get('students',[]);
@@ -3231,16 +3303,14 @@ function openRcpt(stuId){
   const dateStr=now.toLocaleDateString('ar-BH',{year:'numeric',month:'long',day:'numeric'});
   const rcptNo='RCP-'+String(Date.now()).slice(-6);
 
-  // حساب كل الأشهر المدفوعة ومبالغها
+  // حساب كل الأشهر المدفوعة ومبالغها (خيار "كل الأشهر المدفوعة")
   const pays=get('pays',{}), amounts=get('payAmounts',{}), pmethods=get('payMethods',{});
   const stuPays=pays[stuId]||{}, stuAmounts=amounts[stuId]||{}, stuMethods=pmethods[stuId]||{};
   const paidMonths=[];
-  // Only include months within current subscription period
   const subStart = s.start ? s.start.slice(0,7) : null;
   const subEnd   = s.end   ? s.end.slice(0,7)   : null;
   Object.entries(stuPays).forEach(([mk,isPaid])=>{
     if(!isPaid) return;
-    // Filter: only months within subscription period
     if(subStart && mk < subStart) return;
     if(subEnd   && mk > subEnd)   return;
     const[yr,mo]=mk.split('-').map(Number);
@@ -3252,16 +3322,52 @@ function openRcpt(stuId){
   });
   paidMonths.sort((a,b)=>a.mk.localeCompare(b.mk));
   const totalPaid=paidMonths.reduce((sum,m)=>sum+m.amt,0);
-  const hasPaid=paidMonths.length>0;
+
+  const opts=_rcptCoverOptions(s,g);
+  // الاختيار الافتراضي: الخصوصي = باقته الحالية، المجموعات = آخر شهر مدفوع لين الشهر الحالي، وإلا الشهر الحالي
+  const curMk=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+  let def;
+  if(_isPrvStu(s,g) && s.start) def=s.start.slice(0,7);
+  else { const pd=opts.filter(o=>o.paid && o.mk<=curMk); def = pd.length ? pd[pd.length-1].mk : curMk; }
+  _rcptState={s,g,dateStr,rcptNo,paidMonths,totalPaid,opts,sel:def,stuMethods};
 
   document.getElementById('rcpt-title').textContent='إيصال دفع — '+s.name;
-  document.getElementById('rcpt-content').innerHTML=rcptHTML(s,g,dateStr,rcptNo,paidMonths,totalPaid,hasPaid);
+  _renderRcpt();
   document.getElementById('mo-rcpt').classList.add('open');
+}
+function _pickRcptCover(mk){ if(_rcptState){ _rcptState.sel=mk; _renderRcpt(); } }
+function _renderRcpt(){
+  const st=_rcptState; if(!st) return;
+  const isPrv=_isPrvStu(st.s,st.g);
+  const btn=(key,title,sub,on)=>'<button type="button" onclick="_pickRcptCover(\''+key+'\')" style="display:block;width:100%;text-align:right;padding:8px 10px;margin-bottom:6px;border-radius:9px;cursor:pointer;font-family:inherit;'
+    +(on?'border:2px solid var(--primary,#2563eb);background:rgba(37,99,235,.08)':'border:1px solid var(--brd);background:var(--card)')+'">'
+    +'<div style="font-weight:800;font-size:12.5px;color:var(--tx)">'+(on?'🔘 ':'⚪ ')+title+'</div>'
+    +'<div style="font-size:11px;color:var(--mu);margin-top:2px">'+sub+'</div></button>';
+  let bar='<div style="font-weight:900;font-size:12.5px;margin-bottom:6px">📅 هذا الدفع يغطي الحصص:</div>';
+  st.opts.forEach(o=>{
+    const range=o.from?('من '+o.from+' إلى '+o.to+' — '+_nSess(o.n)):'ما في حصص بالجدول لهالشهر';
+    const lbl=(isPrv?'باقة ':'حصص ')+_mkLabel(o.mk)+' — '+o.amt+' د'+(o.paid?' ✓ مدفوع':'');
+    bar+=btn(o.mk,lbl,range,st.sel===o.mk);
+  });
+  if(st.paidMonths.length>1){
+    bar+=btn('all','كل الأشهر المدفوعة ('+st.paidMonths.map(m=>m.label).join('، ')+')','نفس الإيصال القديم — مجموع كل الأشهر',st.sel==='all');
+  }
+  document.getElementById('rcpt-cover').innerHTML=bar;
+  let html;
+  if(st.sel==='all'){
+    html=rcptHTML(st.s,st.g,st.dateStr,st.rcptNo,st.paidMonths,st.totalPaid,st.paidMonths.length>0);
+  } else {
+    const o=st.opts.find(x=>x.mk===st.sel)||st.opts[0];
+    const [yr,mo]=o.mk.split('-').map(Number);
+    const one=[{mk:o.mk,yr,mo:mo-1,amt:o.amt,method:st.stuMethods[o.mk]||'cash',label:_mkLabel(o.mk)}];
+    html=rcptHTML(st.s,st.g,st.dateStr,st.rcptNo,one,o.amt,true,o);
+  }
+  document.getElementById('rcpt-content').innerHTML=html;
 }
 
 
 const _RCPT_LOGO = "data:image/png;base64,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";
-function rcptHTML(s,g,dateStr,rcptNo,paidMonths,totalPaid,hasPaid){
+function rcptHTML(s,g,dateStr,rcptNo,paidMonths,totalPaid,hasPaid,cover){
   var logoSrc=_RCPT_LOGO;
   var gName=g?g.name:'—';
   var stuId=s.sid||s.id||'—';
@@ -3298,7 +3404,11 @@ function rcptHTML(s,g,dateStr,rcptNo,paidMonths,totalPaid,hasPaid){
   h+='<tr><td style="padding:7px 4px;font-size:11px;color:#64748b">رقم ولي الأمر</td>';
   h+='<td style="padding:7px 4px;font-size:11px;font-weight:700;color:#0f172a;text-align:left">'+phone+'</td></tr>';
   // Add coverage date range
-  if(s.start||s.end){
+  if(cover){
+    h+='<tr><td style="padding:7px 4px;font-size:11px;color:#64748b;border-top:1px solid #f1f5f9">يغطي الحصص</td>';
+    h+='<td style="padding:7px 4px;font-size:12px;font-weight:800;color:#0f172a;text-align:left;border-top:1px solid #f1f5f9">'
+      +(cover.from?('من '+cover.from+' إلى '+cover.to+'<div style="font-size:10.5px;color:#64748b;font-weight:700">'+_nSess(cover.n)+'</div>'):'—')+'</td></tr>';
+  } else if(s.start||s.end){
     h+='<tr><td style="padding:7px 4px;font-size:11px;color:#64748b;border-top:1px solid #f1f5f9">يغطي الحصص</td>';
     // Calculate coverage from paid months, then narrow down to actual
     // scheduled class days within that period (not just calendar bounds)
@@ -3366,7 +3476,7 @@ function rcptHTML(s,g,dateStr,rcptNo,paidMonths,totalPaid,hasPaid){
   // could include months that were never actually marked "paid" — showing
   // a false "remaining" balance even when the relevant month was fully paid)
   var totalFee = s.fee||0;
-  var remaining=Math.max(0,totalFee-totalPaid);
+  var remaining=cover?0:Math.max(0,totalFee-totalPaid);
 
   if(remaining>0){
     h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">';
@@ -5039,9 +5149,11 @@ function initHolidaysPage(){
 }
 
 // ══ OFFICIAL HOLIDAYS ══
+let _editHolId = null;
 function openHolidayMo(id){
   const hols = get(HOL_KEY, []);
   const h = id ? hols.find(x=>x.id===id) : null;
+  _editHolId = h ? h.id : null;
   document.getElementById('holiday-mo-title').textContent = id ? 'تعديل الإجازة' : 'إضافة إجازة رسمية';
   document.getElementById('hol-name').value  = h?.name  || '';
   document.getElementById('hol-start').value = h?.start || new Date().toISOString().split('T')[0];
@@ -5061,89 +5173,81 @@ function updateHolPreview(){
   const end   = document.getElementById('hol-end').value;
   if(!start || !end) return;
   const days = countDays(start, end);
-  const stus = get('students', []).filter(s=>!s.archived&&s.end);
+  const grpsP = get('groups', []);
+  const prvN = get('students', []).filter(s=>!s.archived && (grpsP.find(x=>x.id===s.group)||{}).type==='private'
+                 && s.start && s.start<=end && (!s.end || s.end>=start)).length;
   const el   = document.getElementById('hol-preview');
   if(el) el.innerHTML = `📅 عدد أيام الإجازة: <strong>${days} يوم</strong><br>
-    سيتم تمديد اشتراك <strong>${stus.length} طالب</strong> بمقدار ${days} يوم تلقائياً`;
+    الحصص اللي تطيح بالإجازة ما تنحسب، وتنمدد باقة <strong>${prvN} طالب خصوصي</strong> تلقائياً.<br>
+    المجموعات (اشتراك شهري) ما تتمدد.`;
+}
+
+// يعيد حساب نهاية باقة الخصوصي من جدوله (الحساب نفسه يتخطى أيام الإجازات)
+// — ما نزيد عدد الحصص، عشان ما يصير تمديد مرتين
+function _recalcPrivateEndsForRange(rangeStart, rangeEnd){
+  const stus = get('students', []);
+  const grps = get('groups', []);
+  let n = 0;
+  stus.forEach((s, i) => {
+    if(s.archived) return;
+    const g = grps.find(x=>x.id===s.group);
+    if(g?.type !== 'private') return;
+    if(!s.prvSched || !Object.keys(s.prvSched).length || !s.start) return;
+    const total = s.totalSessions || s.monthlySessionCount;
+    if(!total) return;
+    // بس الطلاب اللي باقتهم تلمس فترة الإجازة
+    if(s.start > rangeEnd) return;
+    if(s.end && s.end < rangeStart) return;
+    const newEnd = calcPrivateEndDate(s.start, total, s.prvSched, true);
+    if(newEnd && newEnd !== s.end){ stus[i].end = newEnd; n++; }
+  });
+  if(n) set('students', stus);
+  return n;
 }
 
 function saveHoliday(){
   const name  = document.getElementById('hol-name').value.trim();
   const start = document.getElementById('hol-start').value;
   const end   = document.getElementById('hol-end').value;
-  const scope = document.querySelector('input[name="hol-scope"]:checked')?.value || 'all'; // default all
+  const scope = document.querySelector('input[name="hol-scope"]:checked')?.value || 'all';
   if(!name || !start || !end){ toast('أدخل اسم الإجازة والتواريخ', 'err'); return; }
   if(start > end){ toast('تاريخ البداية يجب أن يكون قبل النهاية', 'err'); return; }
 
   const days = countDays(start, end);
   const hols = get(HOL_KEY, []);
-  const newHol = {
-    id: 'hol_' + Date.now(),
-    name, start, end, scope, days,
-    appliedAt: new Date().toISOString()
-  };
-  hols.push(newHol);
+  const idx  = _editHolId ? hols.findIndex(h=>h.id===_editHolId) : -1;
+  const old  = idx>=0 ? hols[idx] : null;
+  // نفس الإجازة بنفس التواريخ موجودة؟ لا تكررها
+  if(!old && hols.some(h=>h.start===start && h.end===end)){
+    toast('هذي الإجازة مسجلة من قبل بنفس التواريخ', 'warn'); return;
+  }
+  const rec = { id: old ? old.id : 'hol_' + Date.now(), name, start, end, scope, days,
+                appliedAt: old?.appliedAt || new Date().toISOString() };
+  if(idx>=0) hols[idx] = rec; else hols.push(rec);
   set(HOL_KEY, hols);
 
-  // ── Extend student subscriptions ──
-  const stus = get('students', []);
-  const grps = get('groups', []);
-  let extCount = 0;
+  // الخصوصي: نعيد حساب نهاية الباقة (يشمل الفترة القديمة لو عدّلنا التواريخ)
+  const rs = old && old.start < start ? old.start : start;
+  const re = old && old.end   > end   ? old.end   : end;
+  const extCount = _recalcPrivateEndsForRange(rs, re);
 
-  stus.forEach((s, i) => {
-    if(s.archived) return;
-    const g = grps.find(x=>x.id===s.group);
-    // Groups: NEVER extend (paid by month, not sessions)
-    // Private: ALWAYS extend (paid by sessions)
-    if(g?.type !== 'private') return;
-
-    if(g?.type === 'private'){
-      // Private: count how many scheduled sessions fall on holiday dates
-      // Then recalculate end date
-      if(!s.prvSched || !s.start || !s.monthlySessionCount) return;
-      const scheduledDays = Object.keys(s.prvSched).map(Number);
-      let holSessions = 0;
-      // Count sessions that fall within the holiday
-      const holStart = new Date(start), holEnd = new Date(end);
-      const cur2 = new Date(holStart);
-      while(cur2 <= holEnd){
-        if(scheduledDays.includes(cur2.getDay())) holSessions++;
-        cur2.setDate(cur2.getDate()+1);
-      }
-      if(holSessions > 0){
-        // Add those sessions to total
-        stus[i].totalSessions = (s.totalSessions || s.monthlySessionCount || 8) + holSessions;
-        // Recalculate end date
-        const total = stus[i].totalSessions;
-        const newEnd = calcPrivateEndDate(s.start, total, s.prvSched, true);
-        if(newEnd) stus[i].end = newEnd;
-        extCount++;
-      }
-    } else {
-      // Group: NO extension — holiday sessions are simply removed from schedule
-      // The printed schedule already skips holiday days automatically
-      extCount++;
-    }
-  });
-  set('students', stus);
-
-  // ── Mark attendance days as holiday ──
-  // No attendance should be recorded on holiday days
-  // We just store the holiday — attendance page checks it
-
-  addAct(`تم إضافة إجازة "${name}" (${days} أيام) — مُدّد ${extCount} طالب خصوصي`, '#3b82f6');
-  toast(`✓ تم حفظ الإجازة — مُدّد ${extCount} طالب خصوصي`);
-  closeMo('mo-hol');
+  addAct(`تم ${old?'تعديل':'إضافة'} إجازة "${name}" (${days} أيام) — تحدّثت نهاية باقة ${extCount} طالب خصوصي`, '#3b82f6');
+  toast(`✓ تم حفظ الإجازة — تحدّثت نهاية باقة ${extCount} طالب خصوصي`);
+  _editHolId = null;
+  closeMo('mo-holiday');
   renderHolidaysList();
-  renderHolidayImpact();
+  try{ renderHolidayImpact(); }catch(e){}
 }
 
 function deleteHoliday(id){
-  if(!confirm('هل تريد حذف هذه الإجازة؟ لن يتم التراجع عن التمديد.')) return;
+  if(!confirm('هل تريد حذف هذه الإجازة؟ نهاية باقات الخصوصي بترجع تنحسب بدونها.')) return;
   const hols = get(HOL_KEY, []);
-  set(HOL_KEY, hols.filter(h=>h.id!==id));
-  toast('تم حذف الإجازة', 'err');
+  const h = hols.find(x=>x.id===id);
+  set(HOL_KEY, hols.filter(x=>x.id!==id));
+  const n = h ? _recalcPrivateEndsForRange(h.start, h.end) : 0;
+  toast('تم حذف الإجازة' + (n ? ' — تحدّثت نهاية باقة '+n+' طالب خصوصي' : ''), 'err');
   renderHolidaysList();
+  try{ renderHolidayImpact(); }catch(e){}
 }
 
 function renderHolidaysList(){
@@ -6621,15 +6725,6 @@ function exportFullReport(){
   toast('تم تصدير التقرير الشامل');
 }
 
-function openHolidayMo(id){
-  const hols=get(HOL_KEY,[]);
-  const h=id?hols.find(function(x){return x.id===id;}):null;
-  document.getElementById('hol-name').value=h?h.name:'';
-  document.getElementById('hol-start').value=h?h.start:'';
-  document.getElementById('hol-end').value=h?h.end:'';
-  document.getElementById('hol-id').value=h?h.id:'';
-  openMo('mo-holiday');
-}
 
 function onTabsGrpChange(){
   const grpId = document.getElementById('tabs-grp')?.value;
@@ -6949,7 +7044,7 @@ function renderDiagList(){
     var isToday = d.date===today, isTmrw = d.date===tmrwStr;
     var brd = isToday?'2px solid #ef4444':isTmrw?'2px solid #f59e0b':'1px solid var(--brd)';
     var whenTxt = isToday?'اليوم':(isTmrw?'غداً':('بتاريخ '+d.date));
-    var waMsg = encodeURIComponent('السلام عليكم\nتذكير بموعد الاختبار التشخيصي '+whenTxt+' للطالب/ة '+_raw.name+'\nتاريخ الاختبار: '+_raw.date+(_raw.time?' — الساعة '+_raw.time:'')+(_raw.mode==='online'?'\nالاختبار أونلاين — بيوصلكم رابط الاختبار على الواتساب قبل الموعد.':'\n\nلوكيشن الأكاديمية:\nسار مبنى جمعية سار الخيرية / خلف المسجد الوسطي\nhttps://maps.app.goo.gl/npa3Per6Bs7vFdQh7?g_st=iw'));
+    var waMsg = encodeURIComponent('السلام عليكم\nتذكير بموعد الاختبار التشخيصي '+whenTxt+' للطالب/ة '+_raw.name+'\nتاريخ الاختبار: '+_raw.date+(_raw.time?' — الساعة '+_raw.time:'')+(_raw.mode==='online'?'\nالاختبار أونلاين — بيوصلكم رابط الاختبار على الواتساب قبل الموعد.':'\n\nلوكيشن الأكاديمية:\nسار — مبنى رقم 2044\nhttps://maps.google.com/?q=26.187761,50.485268'));
     html += '<div style="background:var(--card);border:'+brd+';border-radius:10px;padding:12px;margin-bottom:6px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">';
     html += '<div style="width:36px;height:36px;min-width:36px;border-radius:50%;background:#3b82f6;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:15px">'+_esc(String(_raw.name||'—').charAt(0))+'</div>';
     html += '<div style="flex:1;min-width:160px"><div style="font-weight:800;font-size:13px">'+d.name;
