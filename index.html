@@ -1994,17 +1994,34 @@ function openMonth(y,m){
   document.getElementById('pg-sub').textContent='الطلاب والمجموعات والمالية لهذا الشهر';
 }
 function _mhSetTab(t){ _mh.tab=t; renderMonthHub(); }
+// أشهر اشتراك الطالب — نفس الحساب اللي ينرسل للاكسل بالضبط:
+//  المجموعات: من شهر البداية + عدد الأشهر (مو حسب تاريخ النهاية، عشان اللي بدا آخر الشهر ما ينحسب بشهر زيادة)
+//  الخصوصي: شهر بداية الباقة (+ أي شهر بعده مسجل له مبلغ أو دفعة)
+function _stuMonths(s){
+  if(!s || !s.start) return [];
+  const g=get('groups',[]).find(x=>x.id===s.group);
+  const isPrv=g?.type==='private' || (g?.name||'').includes('خصوصي');
+  const sm=s.start.slice(0,7);
+  if(isPrv){
+    const pays=(get('pays',{})[s.id])||{}, amts=(get('payAmounts',{})[s.id])||{};
+    const st=new Set([sm]);
+    Object.keys(amts).concat(Object.keys(pays)).forEach(k=>{ if(/^\d{4}-\d{2}$/.test(k) && k>=sm) st.add(k); });
+    return [...st].sort();
+  }
+  const out=[]; for(let i=0;i<(s.subscriptionMonths||1);i++) out.push(monthKeyAt(s.start,i)); return out;
+}
+function _inSubMonth(s, mk){ return !s.archived && !s.frozen && _stuMonths(s).includes(mk); }
 // آخر شهر يغطيه اشتراك الطالب
-function _lastSubMk(s){ return s.end ? s.end.slice(0,7) : null; }
+function _lastSubMk(s){ const ms=_stuMonths(s); return ms.length ? ms[ms.length-1] : null; }
 function _mhData(){
   const y=_mh.y, m=_mh.m, mk=_mhKey(y,m);
   const prevD=new Date(y,m-2,1), minMk=_mhKey(prevD.getFullYear(),prevD.getMonth()); // نرجع لشهرين
   const all=get('students',[]).filter(s=>s&&!s.archived);
   const grps=get('groups',[]);
-  const inMonth=all.filter(s=>isBillingMonth(s,y,m));
+  const inMonth=all.filter(s=>_inSubMonth(s,mk));
   // ما جددوا: اشتراكهم خلص بالشهر الماضي (أو اللي قبله) وما عندهم اشتراك لهالشهر
   const notRenewed=all.filter(s=>{
-    if(s.frozen || !s.start || isBillingMonth(s,y,m)) return false;
+    if(s.frozen || !s.start || _inSubMonth(s,mk)) return false;
     if(s.start.slice(0,7) > mk) return false;      // يبدأ بعدين
     const last=_lastSubMk(s); if(!last) return false;
     return last < mk && last >= minMk;
@@ -2069,7 +2086,7 @@ function _mhNRRow(s,D,g){
   return `<tr style="background:rgba(245,158,11,.06)">
     <td style="font-weight:700">${s.name}</td>
     ${g?`<td>${g}</td>`:''}
-    <td>آخر اشتراك: <b>${MONTH_NAMES[lm-1]} ${ly}</b><div style="font-size:10.5px;color:var(--mu)">انتهى ${s.end}</div></td>
+    <td>آخر اشتراك: <b>${MONTH_NAMES[lm-1]} ${ly}</b><div style="font-size:10.5px;color:var(--mu)">${s.end?'آخر حصة '+s.end:''}</div></td>
     <td style="white-space:nowrap">
       ${wa?`<a class="btn btn-xs" style="background:rgba(37,211,102,.12);color:#128C7E;border:1px solid rgba(37,211,102,.3);text-decoration:none" href="${wa}" target="_blank">📱 تذكير</a>`:''}
       <button class="btn btn-xs btn-ok" onclick="openStuMo('${s.id}')">🔁 تجديد</button>
@@ -6383,6 +6400,39 @@ function exportFullBackup(){
   toast('تم تنزيل النسخة الاحتياطية');
 }
 
+// استيراد آمن: يضيف الناقص بس، وما يمسح ولا يغيّر أي شي موجود
+// (قبل: الاستيراد كان يستبدل كل بيانات السيستم بالملف — لو الملف قديم يمسح كل اللي انضاف بعده)
+function _addOnly(cur, inc, orBool){
+  if(cur===undefined || cur===null) return inc;
+  if(Array.isArray(cur) && Array.isArray(inc) && _isIdArr(cur) && _isIdArr(inc)){
+    const have=new Set(cur.map(x=>String(x.id)));
+    return cur.concat(inc.filter(x=>!have.has(String(x.id))));
+  }
+  if(_isObj(cur) && _isObj(inc)){
+    const out=Object.assign({}, cur);
+    Object.keys(inc).forEach(k=>{ out[k] = (k in cur) ? _addOnly(cur[k], inc[k], orBool) : inc[k]; });
+    return out;
+  }
+  if(orBool && cur===false && inc===true) return true; // دفعة مسجلة بالملف وضايعة بالسيستم
+  return cur;
+}
+function _importAdditive(data){
+  const SKIP={users:1, acts:1, seeded:1};
+  let addedStu=0, addedPay=0;
+  Object.keys(data||{}).forEach(k=>{
+    if(SKIP[k] || FULL_BACKUP_KEYS.indexOf(k)<0) return;
+    let inc; try{ inc = typeof data[k]==='string' ? JSON.parse(data[k]) : data[k]; }catch(e){ return; }
+    if(inc==null) return;
+    const cur=get(k, null);
+    const merged=_addOnly(cur, inc, k==='pays');
+    if(JSON.stringify(merged)===JSON.stringify(cur)) return;
+    if(k==='students') addedStu=(merged||[]).length-(cur||[]).length;
+    if(k==='pays'){ const cnt=o=>Object.values(o||{}).reduce((a,m)=>a+Object.values(m||{}).filter(v=>v===true).length,0); addedPay=cnt(merged)-cnt(cur); }
+    set(k, merged);
+  });
+  return 'طلاب جدد: '+addedStu+' • دفعات: '+addedPay;
+}
+
 function importFullBackup(){
   const input=document.createElement('input');
   input.type='file'; input.accept='.json';
@@ -6394,13 +6444,10 @@ function importFullBackup(){
       try{
         const backup=JSON.parse(ev.target.result);
         if(!backup.data){toast('ملف غير صحيح','err');return;}
-        if(!confirm('هل تريد استعادة النسخة؟ سيتم استبدال البيانات الحالية.')) return;
-        Object.entries(backup.data).forEach(function(entry){
-          localStorage.setItem('bq4_'+entry[0], entry[1]);
-          localStorage.setItem('bq4_'+entry[0]+'_localts', new Date().toISOString());
-        });
-        toast('تم استعادة النسخة — جاري إعادة التحميل...');
-        setTimeout(function(){location.reload();},1500);
+        if(!confirm('بنضيف من الملف الطلاب والدفعات والبيانات الناقصة بس.\nما بيتمسح ولا بيتغيّر أي شي موجود بالسيستم.\n\nنكمل؟')) return;
+        const rep=_importAdditive(backup.data);
+        toast('✓ تمت الإضافة — '+rep);
+        try{ fillGrpSels(); updateBadge(); renderNp(); renderDashboard(); _refreshActivePage(); }catch(e){}
       } catch(err){
         toast('خطأ في قراءة الملف: '+err.message,'err');
       }
@@ -6944,14 +6991,12 @@ function openBackupMo(){
 }
 
 function restoreBackup(date){
-  if(!confirm('هل تريد استعادة نسخة '+date+'؟')) return;
+  if(!confirm('بنضيف من نسخة '+date+' الناقص بس — ما بيتمسح ولا يتغيّر شي موجود. نكمل؟')) return;
   const backup=JSON.parse(localStorage.getItem('bq4_backup_'+date)||'{}');
   if(!Object.keys(backup).length){toast('لا توجد نسخة','err');return;}
-  FULL_BACKUP_KEYS.forEach(function(k){
-    if(backup[k]){localStorage.setItem('bq4_'+k,backup[k]);localStorage.setItem('bq4_'+k+'_localts',new Date().toISOString());}
-  });
-  toast('تم استعادة النسخة — جاري إعادة التحميل...');
-  setTimeout(function(){location.reload();},1500);
+  const rep=_importAdditive(backup);
+  toast('✓ تمت الإضافة — '+rep);
+  try{ fillGrpSels(); updateBadge(); renderNp(); renderDashboard(); _refreshActivePage(); }catch(e){}
 }
 
 function printGroupList(){
